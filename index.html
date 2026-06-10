@@ -214,11 +214,11 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
       <input id="fOdo" type="number" inputmode="numeric" placeholder="z.B. 84512">
       <div class="row2">
         <div><label>Liter</label><input id="fLiters" type="number" inputmode="decimal" step="0.01" placeholder="38.20"></div>
-        <div><label>Preis / Liter (CHF)</label><input id="fPpl" type="number" inputmode="decimal" step="0.001" placeholder="1.789"></div>
+        <div><label>Preis / Liter (CHF)</label><input id="fPpl" type="text" inputmode="numeric" placeholder="1.789" autocomplete="off"></div>
       </div>
       <label>Total (CHF)</label>
       <input id="fTotal" type="number" inputmode="decimal" step="0.05" placeholder="68.35">
-      <div class="hint">Zwei der drei Felder Liter, Preis/Liter und Total ausfüllen – das dritte wird automatisch berechnet.</div>
+      <div class="hint">Zwei der drei Felder Liter, Preis/Liter und Total ausfüllen – das dritte wird automatisch berechnet. Beim Preis/Liter nur Ziffern tippen, der Punkt wird automatisch gesetzt (1789 → 1.789).</div>
       <label>Notiz</label>
       <input id="fFuelNote" placeholder="optional">
     </div>
@@ -682,12 +682,17 @@ function deleteCat(i){
 const calcIds = ['fLiters','fPpl','fTotal'];
 let lastEdited = [];
 calcIds.forEach(id=>{
-  document.getElementById(id).addEventListener('input', ()=>{
+  document.getElementById(id).addEventListener('input', e=>{
+    if(id==='fPpl') formatPpl(e.target);
     lastEdited = lastEdited.filter(x=>x!==id); lastEdited.push(id);
     if(lastEdited.length>2) lastEdited.shift();
     autoCalc();
   });
 });
+function formatPpl(el){
+  const digits = el.value.replace(/\D/g,'').slice(0,4);
+  el.value = digits.length>1 ? digits[0]+'.'+digits.slice(1) : digits;
+}
 function autoCalc(){
   if(lastEdited.length<2) return;
   const target = calcIds.find(id=>!lastEdited.includes(id));
