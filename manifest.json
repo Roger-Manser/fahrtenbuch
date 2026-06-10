@@ -1,6 +1,6 @@
 {
-  "name": "Vehicle Logbook",
-  "short_name": "Logbook",
+  "name": "Fahrtenbuch",
+  "short_name": "Fahrtenbuch",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#1B2733",
