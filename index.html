@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1B2733">
+<title>Vehicle Logbook</title>
+<style>
+:root{
+  --bg:#F2F4F5; --card:#FFFFFF; --ink:#1B2733; --ink-soft:#5B6B78;
+  --line:#DDE3E7; --accent:#E8590C; --teal:#2F6F6A; --violet:#5A4FB5;
+  --teal-soft:#E4EFEE; --accent-soft:#FCEAE0; --violet-soft:#EAE8F7; --radius:12px;
+  --mono:ui-monospace,'SF Mono','Cascadia Mono','Roboto Mono',Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg);color:var(--ink);
+  display:flex;flex-direction:column;max-width:560px;margin:0 auto;min-height:100dvh;
+}
+header{background:var(--ink);color:#fff;padding:18px 16px 14px;border-radius:0 0 18px 18px}
+.brand{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.brand h1{font-size:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.brand .veh{font-size:12px;color:#9FB0BD;font-family:var(--mono)}
+.odometer{display:flex;align-items:center;gap:2px;justify-content:center;margin:4px 0 10px}
+.odometer .digit{
+  font-family:var(--mono);font-size:30px;font-weight:700;background:#0E161E;
+  border:1px solid #324250;border-radius:5px;min-width:26px;text-align:center;
+  padding:4px 2px;color:#F4F7F9;
+}
+.odometer .unit{font-family:var(--mono);font-size:12px;color:#9FB0BD;margin-left:8px;align-self:flex-end;padding-bottom:8px}
+.statrow{display:flex;gap:8px}
+.stat{flex:1;background:#243340;border-radius:8px;padding:8px 10px}
+.stat .v{font-family:var(--mono);font-size:16px;font-weight:700}
+.stat .l{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#9FB0BD;margin-top:2px}
+nav{display:flex;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav button{flex:1;padding:13px 0;border:none;background:none;font-size:14px;font-weight:600;color:var(--ink-soft);border-bottom:3px solid transparent;cursor:pointer}
+nav button.active{color:var(--ink);border-bottom-color:var(--accent)}
+main{flex:1;padding:14px 14px 90px;overflow-y:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.empty{text-align:center;color:var(--ink-soft);padding:36px 16px;font-size:14px;line-height:1.5}
+.entry{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:8px;cursor:pointer}
+.entry:active{background:#F7F9FA}
+.entry .top{display:flex;align-items:center;gap:10px}
+.entry .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;padding:4px 7px;border-radius:6px;white-space:nowrap}
+.tag.fuel{background:var(--accent-soft);color:var(--accent)}
+.tag.cost{background:var(--teal-soft);color:var(--teal)}
+.tag.rec{background:var(--violet-soft);color:var(--violet)}
+.entry .mid{flex:1;min-width:0}
+.entry .t1{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .t2{font-size:12px;color:var(--ink-soft);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .amt{font-family:var(--mono);font-size:15px;font-weight:700;text-align:right;white-space:nowrap}
+.entry .amt small{display:block;font-size:10px;font-weight:400;color:var(--ink-soft)}
+.fuelgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.fuelgrid .fg .v{font-family:var(--mono);font-size:13px;font-weight:700}
+.fuelgrid .fg .l{font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);margin-top:1px}
+.month-head{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:14px 2px 8px}
+label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:10px 0 4px}
+input,select{
+  width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;
+  font-size:16px;font-family:inherit;background:#fff;color:var(--ink);
+}
+input:focus,select:focus{outline:2px solid var(--teal);outline-offset:0;border-color:var(--teal)}
+input.calc{background:var(--accent-soft);border-color:#F0C4A8}
+.row2{display:flex;gap:10px}
+.row2>div{flex:1}
+.hint{font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.4}
+.btn{display:block;width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px}
+.btn.primary{background:var(--ink);color:#fff}
+.btn.danger{background:none;color:#B3261E;border:1px solid #E8C5C2;margin-top:8px}
+.btn.ghost{background:none;color:var(--ink-soft);border:1px solid var(--line);margin-top:8px}
+.fab{
+  position:fixed;bottom:20px;right:max(16px,calc(50% - 264px));
+  width:58px;height:58px;border-radius:50%;border:none;background:var(--accent);
+  color:#fff;font-size:30px;line-height:1;box-shadow:0 4px 14px rgba(232,89,12,.4);cursor:pointer;z-index:6;
+}
+.overlay{position:fixed;inset:0;background:rgba(15,23,30,.55);z-index:10;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.sheet{background:var(--bg);width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;border-radius:18px 18px 0 0;padding:18px 16px 28px}
+.sheet h2{font-size:17px;margin-bottom:4px}
+.sheet .sub{font-size:12px;color:var(--ink-soft)}
+.typeswitch{display:flex;gap:8px;margin-top:12px}
+.typeswitch button{flex:1;padding:11px 4px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer}
+.typeswitch button.on.fuel{background:var(--accent);border-color:var(--accent);color:#fff}
+.typeswitch button.on.cost{background:var(--teal);border-color:var(--teal);color:#fff}
+.typeswitch button.on.rec{background:var(--violet);border-color:var(--violet);color:#fff}
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.bigstat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px}
+.bigstat .v{font-family:var(--mono);font-size:20px;font-weight:700}
+.bigstat .l{font-size:11px;color:var(--ink-soft);margin-top:3px}
+.bar-row{margin-bottom:10px}
+.bar-row .bl{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.bar-row .bl b{font-family:var(--mono);font-weight:700}
+.bar{height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin:18px 2px 8px}
+.filebtns{display:flex;gap:8px;margin-top:6px}
+.filebtns .btn{margin-top:0;font-size:13px;padding:11px}
+.reclist .ri{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;
+}
+.reclist .ri:last-child{border-bottom:none}
+.reclist .ri .n{font-size:14px;font-weight:600}
+.reclist .ri .d{font-size:11px;color:var(--ink-soft);margin-top:2px}
+.reclist .ri .a{font-family:var(--mono);font-weight:700;font-size:14px}
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--ink);
+  color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;opacity:0;
+  transition:opacity .25s;pointer-events:none;z-index:20;white-space:nowrap;
+}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Vehicle Logbook</h1>
+    <span class="veh" id="vehLabel">MY CAR</span>
+  </div>
+  <div class="odometer" id="odo"></div>
+  <div class="statrow">
+    <div class="stat"><div class="v" id="hCost">0.00</div><div class="l">Total CHF</div></div>
+    <div class="stat"><div class="v" id="hCons">–</div><div class="l">l / 100 km</div></div>
+    <div class="stat"><div class="v" id="hPpl">–</div><div class="l">Ø CHF / l</div></div>
+  </div>
+</header>
+
+<nav>
+  <button class="active" data-tab="log">Log</button>
+  <button data-tab="stats">Stats</button>
+  <button data-tab="data">Data</button>
+</nav>
+
+<main>
+  <section id="tab-log"></section>
+  <section id="tab-stats" hidden></section>
+  <section id="tab-data" hidden>
+    <div class="card">
+      <h3 class="sec" style="margin-top:0">Monthly costs</h3>
+      <p style="font-size:13px;color:var(--ink-soft);line-height:1.5">
+        Recurring costs like leasing or parking are added automatically every month from their start month. Tap one to edit it.
+      </p>
+      <div class="reclist" id="recList"></div>
+      <button class="btn ghost" onclick="openSheet('rec')">+ Add monthly cost</button>
+    </div>
+    <div class="card">
+      <h3 class="sec" style="margin-top:0">Vehicle</h3>
+      <label>Vehicle name (shown in header)</label>
+      <input id="vehName" placeholder="e.g. VW Golf SG-12345">
+      <button class="btn primary" onclick="saveSettings()">Save settings</button>
+    </div>
+    <div class="card">
+      <h3 class="sec" style="margin-top:0">Backup &amp; export</h3>
+      <p style="font-size:13px;color:var(--ink-soft);line-height:1.5">
+        Save your logbook as a JSON file to keep a backup or move it to another device. Export CSV to open the data in Excel.
+      </p>
+      <div class="filebtns">
+        <button class="btn primary" onclick="saveJSON()">Save file</button>
+        <button class="btn ghost" onclick="document.getElementById('loadInput').click()">Load file</button>
+      </div>
+      <div class="filebtns">
+        <button class="btn ghost" onclick="exportCSV('fuel')">Fuel stops CSV</button>
+        <button class="btn ghost" onclick="exportCSV('costs')">Costs CSV</button>
+      </div>
+      <input type="file" id="loadInput" accept=".json" hidden onchange="loadJSON(event)">
+    </div>
+    <div class="card">
+      <h3 class="sec" style="margin-top:0">Reset</h3>
+      <button class="btn danger" onclick="resetAll()">Delete all entries</button>
+    </div>
+  </section>
+</main>
+
+<button class="fab" onclick="openSheet()" aria-label="Add entry">+</button>
+
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet">
+    <h2 id="sheetTitle">New entry</h2>
+    <div class="sub" id="sheetSub">Add a fuel stop, a cost or a monthly cost</div>
+    <div class="typeswitch" id="typeSwitch">
+      <button class="fuel on" onclick="setType('fuel')">Fuel stop</button>
+      <button class="cost" onclick="setType('cost')">Other cost</button>
+      <button class="rec" onclick="setType('rec')">Monthly</button>
+    </div>
+
+    <div id="dateWrap">
+      <label>Date</label>
+      <input type="date" id="fDate">
+    </div>
+
+    <div id="fuelFields">
+      <label>Station</label>
+      <select id="fStation" onchange="stationChanged()"></select>
+      <input id="fStationNew" placeholder="Name of the new station" hidden style="margin-top:8px">
+      <label>Odometer (km)</label>
+      <input id="fOdo" type="number" inputmode="numeric" placeholder="e.g. 84512">
+      <div class="row2">
+        <div><label>Liters</label><input id="fLiters" type="number" inputmode="decimal" step="0.01" placeholder="38.20"></div>
+        <div><label>Price / liter (CHF)</label><input id="fPpl" type="number" inputmode="decimal" step="0.001" placeholder="1.789"></div>
+      </div>
+      <label>Total (CHF)</label>
+      <input id="fTotal" type="number" inputmode="decimal" step="0.05" placeholder="68.35">
+      <div class="hint">Fill in any two of liters, price/liter and total – the third is calculated automatically.</div>
+      <label>Note</label>
+      <input id="fFuelNote" placeholder="optional">
+    </div>
+
+    <div id="costFields" hidden>
+      <label>Category</label>
+      <select id="fCat">
+        <option>Purchase</option><option>Accessories</option><option>Service / Repair</option>
+        <option>Insurance</option><option>Tax</option><option>Tires</option>
+        <option>Parking</option><option>Highway vignette</option>
+        <option>Cleaning</option><option>Other</option>
+      </select>
+      <div class="row2">
+        <div><label>Amount (CHF)</label><input id="fAmount" type="number" inputmode="decimal" step="0.05" placeholder="250.00"></div>
+        <div><label>Odometer (km)</label><input id="fOdoC" type="number" inputmode="numeric" placeholder="optional"></div>
+      </div>
+      <label>Note</label>
+      <input id="fCostNote" placeholder="optional">
+    </div>
+
+    <div id="recFields" hidden>
+      <label>Name</label>
+      <input id="rName" placeholder="e.g. Leasing, Parking">
+      <label>Amount per month (CHF)</label>
+      <input id="rAmount" type="number" inputmode="decimal" step="0.05" placeholder="389.00">
+      <div class="row2">
+        <div><label>First month</label><input id="rStart" type="month"></div>
+        <div><label>Last month (optional)</label><input id="rEnd" type="month"></div>
+      </div>
+      <div class="hint">The amount is booked automatically for every month from the first month until today (or until the last month, if set).</div>
+    </div>
+
+    <button class="btn primary" id="saveBtn" onclick="saveEntry()">Add entry</button>
+    <button class="btn danger" id="deleteBtn" onclick="deleteEntry()" hidden>Delete entry</button>
+    <button class="btn ghost" onclick="closeSheet()">Cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ---------- state ---------- */
+let DB = { settings:{vehicle:''}, stations:[], fuel:[], costs:[], recurring:[] };
+let editId = null, entryType = 'fuel';
+
+const CHF = n => (Math.round(n*100)/100).toLocaleString('de-CH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const N1  = n => (Math.round(n*10)/10).toLocaleString('de-CH',{minimumFractionDigits:1,maximumFractionDigits:1});
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const today = () => new Date().toISOString().slice(0,10);
+const thisMonth = () => today().slice(0,7);
+const fmtDate = d => { const [y,m,dd]=d.split('-'); return dd+'.'+m+'.'+y; };
+const monthKey = d => d.slice(0,7);
+const monthName = k => new Date(k+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+
+/* ---------- persistence (auto-save, graceful fallback) ---------- */
+function persist(){ try{ localStorage.setItem('vehicleLogbook3', JSON.stringify(DB)); }catch(e){} }
+function restore(){
+  try{
+    const raw = localStorage.getItem('vehicleLogbook3');
+    if(raw){ const d = JSON.parse(raw); if(d && d.fuel && d.costs) mergeDB(d); }
+  }catch(e){}
+}
+function mergeDB(d){
+  DB = Object.assign({settings:{vehicle:''},stations:[],fuel:[],costs:[],recurring:[]}, d);
+  DB.stations  = DB.stations  || [];
+  DB.recurring = DB.recurring || [];
+}
+
+/* ---------- recurring occurrences ---------- */
+function nextMonth(k){
+  let [y,m] = k.split('-').map(Number);
+  m++; if(m>12){m=1;y++;}
+  return y+'-'+String(m).padStart(2,'0');
+}
+function recurringOccurrences(){
+  const out = [], cur = thisMonth();
+  for(const r of DB.recurring){
+    if(!r.start || !(+r.amount>0)) continue;
+    let k = r.start;
+    const stop = (r.end && r.end < cur) ? r.end : cur;
+    let guard = 0;
+    while(k <= stop && guard++ < 600){
+      out.push({recId:r.id, name:r.name, amount:+r.amount, month:k});
+      k = nextMonth(k);
+    }
+  }
+  return out;
+}
+
+/* ---------- derived ---------- */
+function fuelSorted(){ return [...DB.fuel].sort((a,b)=> a.odo-b.odo || a.date.localeCompare(b.date)); }
+function totals(){
+  const fuelCHF = DB.fuel.reduce((s,f)=>s+(+f.total||0),0);
+  const fuelL   = DB.fuel.reduce((s,f)=>s+(+f.liters||0),0);
+  const otherCHF= DB.costs.reduce((s,c)=>s+(+c.amount||0),0);
+  const recCHF  = recurringOccurrences().reduce((s,o)=>s+o.amount,0);
+  const fs = fuelSorted();
+  let spanKm=0, spanL=0;
+  if(fs.length>=2){
+    spanKm = fs[fs.length-1].odo - fs[0].odo;
+    spanL  = fs.slice(1).reduce((s,f)=>s+(+f.liters||0),0);
+  }
+  return {fuelCHF,fuelL,otherCHF,recCHF,cost:fuelCHF+otherCHF+recCHF,spanKm,spanL};
+}
+function consumptionAt(stop){
+  const fs = fuelSorted();
+  const i = fs.findIndex(f=>f.id===stop.id);
+  if(i<1) return null;
+  const dk = fs[i].odo - fs[i-1].odo;
+  return (dk>0 && stop.liters>0) ? stop.liters/dk*100 : null;
+}
+function maxOdo(){
+  let m=0;
+  DB.fuel.forEach(f=>{ if(+f.odo>m) m=+f.odo; });
+  DB.costs.forEach(c=>{ if(+c.odo>m) m=+c.odo; });
+  return m;
+}
+
+/* ---------- header ---------- */
+function renderHeader(){
+  const t = totals();
+  const s = String(Math.round(maxOdo())).padStart(6,'0');
+  document.getElementById('odo').innerHTML =
+    s.split('').map(d=>'<span class="digit">'+d+'</span>').join('')+'<span class="unit">km</span>';
+  document.getElementById('hCost').textContent = CHF(t.cost);
+  document.getElementById('hCons').textContent = (t.spanKm>0 && t.spanL>0) ? (t.spanL/t.spanKm*100).toFixed(1) : '–';
+  document.getElementById('hPpl').textContent  = t.fuelL>0 ? (t.fuelCHF/t.fuelL).toFixed(2) : '–';
+  document.getElementById('vehLabel').textContent = (DB.settings.vehicle||'MY CAR').toUpperCase();
+}
+
+/* ---------- log list ---------- */
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function renderLog(){
+  const el = document.getElementById('tab-log');
+  const all = [
+    ...DB.fuel.map(f=>({...f,_k:'fuel'})),
+    ...DB.costs.map(c=>({...c,_k:'cost'})),
+    ...recurringOccurrences().map(o=>({id:o.recId,date:o.month+'-01',name:o.name,amount:o.amount,_k:'rec'}))
+  ].sort((a,b)=> b.date.localeCompare(a.date) || (+b.odo||0)-(+a.odo||0));
+
+  if(!all.length){
+    el.innerHTML = '<div class="empty">No entries yet.<br>Tap <b>+</b> to log your first fuel stop.</div>';
+    return;
+  }
+  let html='', lastMonth='';
+  for(const e of all){
+    const mk = monthKey(e.date);
+    if(mk!==lastMonth){ html += '<div class="month-head">'+monthName(mk)+'</div>'; lastMonth=mk; }
+    if(e._k==='fuel'){
+      const cons = consumptionAt(e);
+      const title = e.station ? esc(e.station) : 'Fuel stop';
+      html += '<div class="entry" onclick="openSheet(\'fuel\',\''+e.id+'\')">'+
+        '<div class="top"><span class="tag fuel">FUEL</span>'+
+        '<div class="mid"><div class="t1">'+title+'</div>'+
+        '<div class="t2">'+fmtDate(e.date)+(e.note?' · '+esc(e.note):'')+'</div></div>'+
+        '<div class="amt">'+CHF(+e.total||0)+'<small>CHF</small></div></div>'+
+        '<div class="fuelgrid">'+
+          '<div class="fg"><div class="v">'+Math.round(e.odo).toLocaleString('de-CH')+'</div><div class="l">km-Stand</div></div>'+
+          '<div class="fg"><div class="v">'+N1(+e.liters||0)+'</div><div class="l">Liters</div></div>'+
+          '<div class="fg"><div class="v">'+(+e.ppl||0).toFixed(2)+'</div><div class="l">CHF / l</div></div>'+
+          '<div class="fg"><div class="v">'+(cons?cons.toFixed(1):'–')+'</div><div class="l">l / 100 km</div></div>'+
+        '</div></div>';
+    }else if(e._k==='cost'){
+      html += '<div class="entry" onclick="openSheet(\'cost\',\''+e.id+'\')">'+
+        '<div class="top"><span class="tag cost">'+esc(e.cat.split(' ')[0].toUpperCase())+'</span>'+
+        '<div class="mid"><div class="t1">'+esc(e.cat)+'</div>'+
+        '<div class="t2">'+fmtDate(e.date)+(e.note?' · '+esc(e.note):'')+'</div></div>'+
+        '<div class="amt">'+CHF(+e.amount||0)+'<small>CHF</small></div></div></div>';
+    }else{
+      html += '<div class="entry" onclick="openSheet(\'rec\',\''+e.id+'\')">'+
+        '<div class="top"><span class="tag rec">MONTHLY</span>'+
+        '<div class="mid"><div class="t1">'+esc(e.name)+'</div>'+
+        '<div class="t2">'+monthName(monthKey(e.date))+' · recurring</div></div>'+
+        '<div class="amt">'+CHF(e.amount)+'<small>CHF</small></div></div></div>';
+    }
+  }
+  el.innerHTML = html;
+}
+
+/* ---------- stats ---------- */
+function bigstat(v,l){ return '<div class="bigstat"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>'; }
+
+/* ---------- SVG charts (offline, no libraries) ---------- */
+const PAL = ['#E8590C','#5A4FB5','#2F6F6A','#C9821A','#A04A6E','#3F6FA8','#5B8A3C','#888880'];
+const CW=340, CH=180, CL=42, CR=8, CT=12, CB=26;
+
+function gridAndAxis(mn,mx,Y,fmt){
+  let s='';
+  for(let g=0;g<=2;g++){
+    const v=mn+(mx-mn)*g/2, y=Y(v);
+    s+='<line x1="'+CL+'" y1="'+y+'" x2="'+(CW-CR)+'" y2="'+y+'" stroke="#E4E8EB" stroke-width="1"/>'+
+       '<text x="'+(CL-5)+'" y="'+(y+3)+'" text-anchor="end" font-size="9" fill="#5B6B78">'+fmt(v)+'</text>';
+  }
+  return s;
+}
+function priceTrendSVG(){
+  const pts = fuelSorted().filter(f=>+f.ppl>0);
+  if(pts.length<2) return '';
+  const vals = pts.map(f=>+f.ppl);
+  let mn=Math.min(...vals), mx=Math.max(...vals);
+  if(mn===mx){mn-=0.05;mx+=0.05;} const pad=(mx-mn)*0.15; mn-=pad; mx+=pad;
+  const pw=CW-CL-CR, ph=CH-CT-CB;
+  const X=i=> CL+pw*i/(vals.length-1);
+  const Y=v=> CT+ph*(1-(v-mn)/(mx-mn));
+  let s='<svg viewBox="0 0 '+CW+' '+CH+'" style="width:100%;height:auto" role="img" aria-label="Price per liter trend">';
+  s+=gridAndAxis(mn,mx,Y,v=>v.toFixed(2));
+  s+='<polyline fill="none" stroke="#E8590C" stroke-width="2" points="'+vals.map((v,i)=>X(i)+','+Y(v)).join(' ')+'"/>';
+  vals.forEach((v,i)=>{ s+='<circle cx="'+X(i)+'" cy="'+Y(v)+'" r="3" fill="#E8590C"/>'; });
+  const step=Math.ceil(vals.length/5);
+  pts.forEach((f,i)=>{ if(i%step===0 || i===vals.length-1){
+    const [y,m,d]=f.date.split('-');
+    s+='<text x="'+X(i)+'" y="'+(CH-6)+'" text-anchor="middle" font-size="8" fill="#5B6B78">'+d+'.'+m+'.</text>';
+  }});
+  return '<h3 class="sec">Price per liter (CHF / l)</h3><div class="card">'+s+'</svg></div>';
+}
+function consumptionSVG(){
+  const fs = fuelSorted();
+  const pts = fs.map(f=>({f, c:consumptionAt(f)})).filter(p=>p.c>0);
+  if(!pts.length) return '';
+  const vals = pts.map(p=>p.c);
+  const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+  let mn=Math.min(...vals,avg), mx=Math.max(...vals,avg);
+  mn=Math.max(0,mn-(mx-mn||1)*0.3); mx+=(mx-mn||1)*0.15;
+  const pw=CW-CL-CR, ph=CH-CT-CB;
+  const bw=Math.min(34, pw/pts.length*0.6);
+  const X=i=> CL+pw*(i+0.5)/pts.length;
+  const Y=v=> CT+ph*(1-(v-mn)/(mx-mn));
+  let s='<svg viewBox="0 0 '+CW+' '+CH+'" style="width:100%;height:auto" role="img" aria-label="Consumption per fuel stop">';
+  s+=gridAndAxis(mn,mx,Y,v=>v.toFixed(1));
+  pts.forEach((p,i)=>{
+    s+='<rect x="'+(X(i)-bw/2)+'" y="'+Y(p.c)+'" width="'+bw+'" height="'+(CT+ph-Y(p.c))+'" rx="2" fill="#2F6F6A"/>';
+  });
+  s+='<line x1="'+CL+'" y1="'+Y(avg)+'" x2="'+(CW-CR)+'" y2="'+Y(avg)+'" stroke="#5B6B78" stroke-width="1.5" stroke-dasharray="5 4"/>';
+  s+='<text x="'+(CW-CR)+'" y="'+(Y(avg)-4)+'" text-anchor="end" font-size="9" fill="#5B6B78">Ø '+avg.toFixed(1)+'</text>';
+  const step=Math.ceil(pts.length/5);
+  pts.forEach((p,i)=>{ if(i%step===0 || i===pts.length-1){
+    const [y,m,d]=p.f.date.split('-');
+    s+='<text x="'+X(i)+'" y="'+(CH-6)+'" text-anchor="middle" font-size="8" fill="#5B6B78">'+d+'.'+m+'.</text>';
+  }});
+  return '<h3 class="sec">Consumption (l / 100 km)</h3><div class="card">'+s+'</svg>'+
+    '<div class="hint">Calculated from the odometer difference between fuel stops – most accurate when you always fill the tank completely.</div></div>';
+}
+function legendRow(color,label){
+  return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:11px;color:var(--ink-soft)">'+
+    '<span style="width:10px;height:10px;border-radius:2px;background:'+color+'"></span>'+label+'</span>';
+}
+function stackedMonthSVG(){
+  const byM = {};
+  DB.fuel.forEach(f=>{ const k=monthKey(f.date); (byM[k]=byM[k]||{f:0,r:0,o:0}).f+=(+f.total||0); });
+  DB.costs.forEach(c=>{ const k=monthKey(c.date); (byM[k]=byM[k]||{f:0,r:0,o:0}).o+=(+c.amount||0); });
+  recurringOccurrences().forEach(oc=>{ (byM[oc.month]=byM[oc.month]||{f:0,r:0,o:0}).r+=oc.amount; });
+  const months = Object.entries(byM).sort((a,b)=>a[0].localeCompare(b[0])).slice(-12);
+  if(!months.length) return '';
+  const mx = Math.max(...months.map(m=>m[1].f+m[1].r+m[1].o)) || 1;
+  const pw=CW-CL-CR, ph=CH-CT-CB;
+  const bw=Math.min(30, pw/months.length*0.6);
+  const X=i=> CL+pw*(i+0.5)/months.length;
+  const Y=v=> CT+ph*(1-v/mx);
+  let s='<svg viewBox="0 0 '+CW+' '+CH+'" style="width:100%;height:auto" role="img" aria-label="Costs per month, stacked">';
+  s+=gridAndAxis(0,mx,Y,v=>Math.round(v).toLocaleString('de-CH'));
+  months.forEach(([k,m],i)=>{
+    let base=0;
+    [['f','#E8590C'],['r','#5A4FB5'],['o','#2F6F6A']].forEach(([key,col])=>{
+      const v=m[key]; if(v<=0) return;
+      const y1=Y(base), y2=Y(base+v);
+      s+='<rect x="'+(X(i)-bw/2)+'" y="'+y2+'" width="'+bw+'" height="'+(y1-y2)+'" fill="'+col+'"/>';
+      base+=v;
+    });
+    s+='<text x="'+X(i)+'" y="'+(CH-6)+'" text-anchor="middle" font-size="8" fill="#5B6B78">'+k.slice(5)+'.'+k.slice(2,4)+'</text>';
+  });
+  return '<h3 class="sec">Costs per month (CHF)</h3><div class="card">'+
+    '<div style="margin-bottom:8px">'+legendRow('#E8590C','Fuel')+legendRow('#5A4FB5','Monthly')+legendRow('#2F6F6A','One-time')+'</div>'+
+    s+'</svg></div>';
+}
+function donutSVG(){
+  const byCat = {};
+  const t = totals();
+  if(t.fuelCHF>0) byCat['Fuel'] = t.fuelCHF;
+  DB.costs.forEach(c=>{ byCat[c.cat]=(byCat[c.cat]||0)+(+c.amount||0); });
+  recurringOccurrences().forEach(o=>{ byCat[o.name]=(byCat[o.name]||0)+o.amount; });
+  let cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  if(!cats.length) return '';
+  if(cats.length>6){
+    const rest = cats.slice(5).reduce((s,c)=>s+c[1],0);
+    cats = cats.slice(0,5); cats.push(['Other categories',rest]);
+  }
+  const total = cats.reduce((s,c)=>s+c[1],0);
+  const r=46, C=2*Math.PI*r;
+  let off=0, segs='';
+  cats.forEach((c,i)=>{
+    const len=c[1]/total*C;
+    segs+='<circle cx="70" cy="70" r="'+r+'" fill="none" stroke="'+PAL[i%PAL.length]+'" stroke-width="24" '+
+      'stroke-dasharray="'+Math.max(len-1.5,0.5)+' '+(C-Math.max(len-1.5,0.5))+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 70 70)"/>';
+    off+=len;
+  });
+  const svg='<svg viewBox="0 0 140 140" style="width:128px;height:128px;flex:none" role="img" aria-label="Cost distribution by category">'+segs+
+    '<text x="70" y="66" text-anchor="middle" font-size="13" font-weight="700" font-family="var(--mono)" fill="#1B2733">'+CHF(total)+'</text>'+
+    '<text x="70" y="80" text-anchor="middle" font-size="8" fill="#5B6B78">TOTAL CHF</text></svg>';
+  const legend = cats.map((c,i)=>
+    '<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:5px">'+
+    '<span style="width:10px;height:10px;border-radius:2px;flex:none;background:'+PAL[i%PAL.length]+'"></span>'+
+    '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c[0])+'</span>'+
+    '<b style="font-family:var(--mono)">'+Math.round(c[1]/total*100)+'%</b></div>').join('');
+  return '<h3 class="sec">Costs by category</h3><div class="card">'+
+    '<div style="display:flex;gap:14px;align-items:center"><div>'+svg+'</div>'+
+    '<div style="flex:1;min-width:0">'+legend+'</div></div></div>';
+}
+
+function renderStats(){
+  const el = document.getElementById('tab-stats');
+  const t = totals();
+  if(!DB.fuel.length && !DB.costs.length && !DB.recurring.length){
+    el.innerHTML='<div class="empty">Statistics appear once you have logged fuel stops and costs.</div>';
+    return;
+  }
+  const cons = (t.spanKm>0 && t.spanL>0) ? t.spanL/t.spanKm*100 : null;
+  const costPerKm = t.spanKm>0 ? t.cost/t.spanKm : null;
+  const pplAvg = t.fuelL>0 ? t.fuelCHF/t.fuelL : null;
+  const fs = fuelSorted();
+  const ppls = fs.map(f=>+f.ppl).filter(p=>p>0);
+  const pplMin = ppls.length?Math.min(...ppls):null;
+  const pplMax = ppls.length?Math.max(...ppls):null;
+
+  let html = '<div class="statgrid">'+
+    bigstat(CHF(t.cost),'Total costs (CHF)')+
+    bigstat(t.spanKm>0?Math.round(t.spanKm).toLocaleString('de-CH'):'–','Driven km (odo span)')+
+    bigstat(cons?cons.toFixed(1):'–','Ø consumption l / 100 km')+
+    bigstat(costPerKm?CHF(costPerKm):'–','Total cost per km (CHF)')+
+    bigstat(pplAvg?pplAvg.toFixed(3):'–','Ø price CHF / l')+
+    bigstat(pplMin?pplMin.toFixed(2)+' – '+pplMax.toFixed(2):'–','Price range CHF / l')+
+    bigstat(CHF(t.fuelCHF),'Fuel total (CHF)')+
+    bigstat(CHF(t.recCHF),'Monthly costs total (CHF)')+
+  '</div>';
+
+  html += priceTrendSVG();
+  html += consumptionSVG();
+  html += donutSVG();
+
+  // price per station
+  const byStation = {};
+  fs.forEach(f=>{
+    if(!f.station || !(+f.ppl>0)) return;
+    (byStation[f.station] = byStation[f.station]||[]).push(+f.ppl);
+  });
+  const stations = Object.entries(byStation)
+    .map(([s,arr])=>[s, arr.reduce((a,b)=>a+b,0)/arr.length, arr.length])
+    .sort((a,b)=>a[1]-b[1]);
+  if(stations.length){
+    const max = Math.max(...stations.map(s=>s[1]));
+    html += '<h3 class="sec">Ø price per station (CHF / l)</h3><div class="card">';
+    for(const [s,avg,n] of stations){
+      html += '<div class="bar-row"><div class="bl"><span>'+esc(s)+' <span style="color:var(--ink-soft)">('+n+'×)</span></span><b>'+avg.toFixed(3)+'</b></div>'+
+              '<div class="bar"><i style="width:'+Math.max(3,avg/max*100)+'%;background:var(--violet)"></i></div></div>';
+    }
+    html += '</div>';
+  }
+
+  html += stackedMonthSVG();
+  el.innerHTML = html;
+}
+
+/* ---------- recurring list (Data tab) ---------- */
+function renderRecList(){
+  const el = document.getElementById('recList');
+  if(!DB.recurring.length){
+    el.innerHTML = '<div style="font-size:13px;color:var(--ink-soft);padding:6px 0">No monthly costs yet.</div>';
+    return;
+  }
+  el.innerHTML = DB.recurring.map(r=>
+    '<div class="ri" onclick="openSheet(\'rec\',\''+r.id+'\')">'+
+    '<div><div class="n">'+esc(r.name)+'</div>'+
+    '<div class="d">from '+esc(r.start)+(r.end?' to '+esc(r.end):'')+'</div></div>'+
+    '<div class="a">'+CHF(+r.amount)+'</div></div>'
+  ).join('');
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('nav button').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    ['log','stats','data'].forEach(t=>document.getElementById('tab-'+t).hidden = t!==b.dataset.tab);
+    if(b.dataset.tab==='stats') renderStats();
+  };
+});
+
+/* ---------- station select ---------- */
+function fillStationSelect(selected){
+  const sel = document.getElementById('fStation');
+  const opts = ['<option value="">– no station –</option>']
+    .concat([...DB.stations].sort((a,b)=>a.localeCompare(b)).map(s=>'<option'+(s===selected?' selected':'')+'>'+esc(s)+'</option>'))
+    .concat(['<option value="__new">+ New station…</option>']);
+  sel.innerHTML = opts.join('');
+  if(selected && !DB.stations.includes(selected)){ sel.value=''; }
+  stationChanged();
+}
+function stationChanged(){
+  const isNew = document.getElementById('fStation').value==='__new';
+  const inp = document.getElementById('fStationNew');
+  inp.hidden = !isNew;
+  if(isNew) inp.focus();
+}
+
+/* ---------- auto-calc liters / price / total ---------- */
+const calcIds = ['fLiters','fPpl','fTotal'];
+let lastEdited = [];
+calcIds.forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{
+    lastEdited = lastEdited.filter(x=>x!==id); lastEdited.push(id);
+    if(lastEdited.length>2) lastEdited.shift();
+    autoCalc();
+  });
+});
+function autoCalc(){
+  if(lastEdited.length<2) return;
+  const target = calcIds.find(id=>!lastEdited.includes(id));
+  const L = parseFloat(document.getElementById('fLiters').value);
+  const P = parseFloat(document.getElementById('fPpl').value);
+  const T = parseFloat(document.getElementById('fTotal').value);
+  const el = document.getElementById(target);
+  calcIds.forEach(id=>document.getElementById(id).classList.remove('calc'));
+  if(target==='fTotal' && L>0 && P>0){ el.value=(L*P).toFixed(2); el.classList.add('calc'); }
+  if(target==='fPpl'   && L>0 && T>0){ el.value=(T/L).toFixed(3); el.classList.add('calc'); }
+  if(target==='fLiters'&& P>0 && T>0){ el.value=(T/P).toFixed(2); el.classList.add('calc'); }
+}
+
+/* ---------- sheet (add / edit) ---------- */
+function openSheet(type, id){
+  editId = id||null;
+  setType(type||'fuel');
+  const isRec = (type==='rec');
+  document.getElementById('sheetTitle').textContent = editId?'Edit entry':'New entry';
+  document.getElementById('sheetSub').textContent = editId
+    ? (isRec?'Changes apply to all months of this cost':'Tap delete to remove this entry')
+    : 'Add a fuel stop, a cost or a monthly cost';
+  document.getElementById('saveBtn').textContent = editId?'Save changes':'Add entry';
+  document.getElementById('deleteBtn').hidden = !editId;
+  document.getElementById('typeSwitch').style.display = editId?'none':'flex';
+
+  ['fOdo','fLiters','fPpl','fTotal','fFuelNote','fAmount','fOdoC','fCostNote','rName','rAmount','rEnd','fStationNew'].forEach(i=>{
+    const el=document.getElementById(i); el.value=''; el.classList.remove('calc');
+  });
+  document.getElementById('fDate').value = today();
+  document.getElementById('rStart').value = thisMonth();
+  document.getElementById('fCat').value = 'Service / Repair';
+  lastEdited = [];
+  fillStationSelect('');
+
+  if(editId){
+    if(type==='fuel'){
+      const f = DB.fuel.find(x=>x.id===editId);
+      if(f){ fDate.value=f.date; fillStationSelect(f.station||''); fOdo.value=f.odo; fLiters.value=f.liters; fPpl.value=f.ppl; fTotal.value=f.total; fFuelNote.value=f.note||''; lastEdited=['fLiters','fPpl']; }
+    }else if(type==='cost'){
+      const c = DB.costs.find(x=>x.id===editId);
+      if(c){ fDate.value=c.date; fCat.value=c.cat; fAmount.value=c.amount; fOdoC.value=c.odo||''; fCostNote.value=c.note||''; }
+    }else{
+      const r = DB.recurring.find(x=>x.id===editId);
+      if(r){ rName.value=r.name; rAmount.value=r.amount; rStart.value=r.start; rEnd.value=r.end||''; }
+    }
+  }
+  document.getElementById('overlay').classList.add('open');
+}
+function closeSheet(){ document.getElementById('overlay').classList.remove('open'); editId=null; }
+function setType(t){
+  entryType = t;
+  document.querySelectorAll('#typeSwitch button').forEach(b=>b.classList.toggle('on', b.classList.contains(t)));
+  document.getElementById('fuelFields').hidden = t!=='fuel';
+  document.getElementById('costFields').hidden = t!=='cost';
+  document.getElementById('recFields').hidden  = t!=='rec';
+  document.getElementById('dateWrap').hidden   = t==='rec';
+}
+
+function saveEntry(){
+  const date = document.getElementById('fDate').value || today();
+  const wasEdit = !!editId;
+  if(entryType==='fuel'){
+    const odo = parseFloat(document.getElementById('fOdo').value);
+    const liters = parseFloat(document.getElementById('fLiters').value);
+    const ppl = parseFloat(document.getElementById('fPpl').value);
+    const total = parseFloat(document.getElementById('fTotal').value);
+    if(!(odo>0)){ toast('Please enter the odometer reading'); return; }
+    if(!(liters>0) || !(total>0)){ toast('Please enter liters and price'); return; }
+    let station = document.getElementById('fStation').value;
+    if(station==='__new'){
+      station = document.getElementById('fStationNew').value.trim();
+      if(station && !DB.stations.includes(station)) DB.stations.push(station);
+    }
+    const obj = { id: editId||uid(), date, station, odo, liters, ppl: ppl>0?ppl:total/liters, total, note: fFuelNote.value.trim() };
+    if(editId){ const i=DB.fuel.findIndex(x=>x.id===editId); DB.fuel[i]=obj; } else DB.fuel.push(obj);
+  }else if(entryType==='cost'){
+    const amount = parseFloat(document.getElementById('fAmount').value);
+    if(!(amount>0)){ toast('Please enter the amount in CHF'); return; }
+    const obj = { id: editId||uid(), date, cat: fCat.value, amount, odo: parseFloat(fOdoC.value)||null, note: fCostNote.value.trim() };
+    if(editId){ const i=DB.costs.findIndex(x=>x.id===editId); DB.costs[i]=obj; } else DB.costs.push(obj);
+  }else{
+    const name = rName.value.trim();
+    const amount = parseFloat(rAmount.value);
+    const start = rStart.value;
+    const end = rEnd.value || null;
+    if(!name){ toast('Please enter a name'); return; }
+    if(!(amount>0)){ toast('Please enter the monthly amount'); return; }
+    if(!start){ toast('Please choose the first month'); return; }
+    if(end && end<start){ toast('Last month is before first month'); return; }
+    const obj = { id: editId||uid(), name, amount, start, end };
+    if(editId){ const i=DB.recurring.findIndex(x=>x.id===editId); DB.recurring[i]=obj; } else DB.recurring.push(obj);
+  }
+  persist(); renderAll(); closeSheet(); toast(wasEdit?'Entry updated':'Entry added');
+}
+function deleteEntry(){
+  if(!editId) return;
+  const isRec = DB.recurring.some(x=>x.id===editId);
+  const msg = isRec ? 'Delete this monthly cost? It will be removed from ALL months.' : 'Delete this entry?';
+  if(!confirm(msg)) return;
+  DB.fuel      = DB.fuel.filter(x=>x.id!==editId);
+  DB.costs     = DB.costs.filter(x=>x.id!==editId);
+  DB.recurring = DB.recurring.filter(x=>x.id!==editId);
+  persist(); renderAll(); closeSheet(); toast('Entry deleted');
+}
+
+/* ---------- settings ---------- */
+function saveSettings(){
+  DB.settings.vehicle = document.getElementById('vehName').value.trim();
+  persist(); renderHeader(); toast('Settings saved');
+}
+
+/* ---------- file save / load / export ---------- */
+function download(name, content, type){
+  const blob = new Blob([content],{type});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},400);
+}
+function saveJSON(){
+  download('vehicle-logbook-'+today()+'.json', JSON.stringify(DB,null,2), 'application/json');
+  toast('Logbook saved');
+}
+function loadJSON(ev){
+  const f = ev.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const d = JSON.parse(r.result);
+      if(!d.fuel || !d.costs) throw 0;
+      mergeDB(d);
+      persist(); renderAll(); fillSettings(); toast('Logbook loaded');
+    }catch(e){ toast('Could not read this file'); }
+  };
+  r.readAsText(f); ev.target.value='';
+}
+function csvEsc(v){ v=String(v??''); return /[";\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function exportCSV(kind){
+  let rows;
+  if(kind==='fuel'){
+    const fs = fuelSorted();
+    rows = [['Date','Station','Odometer km','Liters','Price/l CHF','Total CHF','l/100km','Note'],
+      ...fs.map(f=>{
+        const c = consumptionAt(f);
+        return [f.date,f.station||'',f.odo,f.liters,f.ppl,f.total,c?c.toFixed(2):'',f.note];
+      })];
+  }else{
+    const recRows = recurringOccurrences().map(o=>[o.month+'-01', o.name+' (monthly)', o.amount, '', '']);
+    rows = [['Date','Category','Amount CHF','Odometer','Note'],
+      ...[...DB.costs].sort((a,b)=>a.date.localeCompare(b.date))
+        .map(c=>[c.date,c.cat,c.amount,c.odo??'',c.note]),
+      ...recRows.sort((a,b)=>String(a[0]).localeCompare(String(b[0])))];
+  }
+  download(kind+'-'+today()+'.csv', '\uFEFF'+rows.map(r=>r.map(csvEsc).join(';')).join('\r\n'), 'text/csv');
+  toast('CSV exported');
+}
+function resetAll(){
+  if(!confirm('Delete ALL fuel stops, costs and monthly costs? This cannot be undone.')) return;
+  DB.fuel=[]; DB.costs=[]; DB.recurring=[];
+  persist(); renderAll(); toast('All entries deleted');
+}
+
+/* ---------- misc ---------- */
+let toastT;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('show'),2200);
+}
+function fillSettings(){ document.getElementById('vehName').value = DB.settings.vehicle||''; }
+function renderAll(){ renderHeader(); renderLog(); renderRecList(); if(!document.getElementById('tab-stats').hidden) renderStats(); }
+
+restore(); fillSettings(); renderAll();
+</script>
+</body>
+</html>
