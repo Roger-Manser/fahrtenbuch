@@ -128,6 +128,7 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
     <h1>Fahrtenbuch</h1>
     <span class="veh" id="vehLabel">MEIN AUTO</span>
   </div>
+  <div style="text-align:center;font-family:var(--mono);font-size:10px;color:#7C8C99;margin:-6px 0 8px" id="verLabel">v3.1 · Rev 0</div>
   <div class="odometer" id="odo"></div>
   <div class="statrow">
     <div class="stat"><div class="v" id="hCost">0.00</div><div class="l">Total CHF</div></div>
@@ -166,6 +167,31 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
       <label>Fahrzeugname (wird im Kopf angezeigt)</label>
       <input id="vehName" placeholder="z.B. VW Golf SG-12345">
       <button class="btn primary" onclick="saveSettings()">Einstellungen speichern</button>
+    </div>
+    <div class="card">
+      <h3 class="sec" style="margin-top:0">GitHub-Synchronisation</h3>
+      <p style="font-size:13px;color:var(--ink-soft);line-height:1.5">
+        Speichert dein Fahrtenbuch als <code>fahrtenbuch.json</code> im Repo. Beim Öffnen lädt die App automatisch den neuesten Stand von GitHub. So sind alle Geräte gleich, und die Lebenskosten-App kann die Daten lesen.
+      </p>
+      <label>GitHub-Benutzer (Owner)</label>
+      <input id="ghOwner" placeholder="Roger-Manser" autocomplete="off" autocapitalize="none">
+      <label>Repository</label>
+      <input id="ghRepo" placeholder="fahrtenbuch" autocomplete="off" autocapitalize="none">
+      <label>Branch</label>
+      <input id="ghBranch" placeholder="main" autocomplete="off" autocapitalize="none">
+      <label>Token (für Hochladen nötig · Fine-grained, Contents: Read and write)</label>
+      <input id="ghToken" type="password" placeholder="github_pat_…" autocomplete="off">
+      <div class="hint">Bei öffentlichem Repo wird zum <b>Laden</b> kein Token gebraucht. Zum <b>Hochladen</b> brauchst du eines mit Schreibrecht. Der Token bleibt nur in diesem Browser.</div>
+      <button class="btn primary" onclick="saveGhConfig()">Verbindung speichern</button>
+      <div class="filebtns">
+        <button class="btn primary" onclick="ghSync()" style="background:var(--teal)">↑ Hochladen</button>
+        <button class="btn ghost" onclick="ghPull()">↓ Von GitHub laden</button>
+      </div>
+      <div class="hint" id="ghStatus" style="margin-top:8px"></div>
+      <label style="margin-top:12px;display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="ghAuto" style="width:auto;margin:0" onchange="toggleAuto()">
+        <span style="font-weight:600;color:var(--ink)">Automatisch hochladen nach jeder Änderung</span>
+      </label>
     </div>
     <div class="card">
       <h3 class="sec" style="margin-top:0">Sicherung &amp; Export</h3>
@@ -258,7 +284,8 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 <script>
 'use strict';
 /* ---------- Zustand ---------- */
-let DB = { settings:{vehicle:''}, stations:[], categories:[], fuel:[], costs:[], recurring:[] };
+const APP_VERSION = 'v3.1';
+let DB = { settings:{vehicle:''}, stations:[], categories:[], fuel:[], costs:[], recurring:[], rev:0 };
 const DEFAULT_CATS = ['Ankauf','Zubehör','Service / Reparatur','Versicherung','Steuern','Reifen','Parkieren','Autobahnvignette','Reinigung','Sonstiges'];
 const CAT_MIGRATE = {'Purchase':'Ankauf','Accessories':'Zubehör','Service / Repair':'Service / Reparatur','Insurance':'Versicherung','Tax':'Steuern','Tires':'Reifen','Parking':'Parkieren','Highway vignette':'Autobahnvignette','Cleaning':'Reinigung','Other':'Sonstiges'};
 let editId = null, entryType = 'fuel';
@@ -273,7 +300,12 @@ const monthKey = d => d.slice(0,7);
 const monthName = k => new Date(k+'-01T12:00:00').toLocaleDateString('de-CH',{month:'long',year:'numeric'});
 
 /* ---------- Speicherung (Auto-Save mit Fallback) ---------- */
-function persist(){ try{ localStorage.setItem('vehicleLogbook3', JSON.stringify(DB)); }catch(e){} }
+function persist(bumpRev){
+  if(bumpRev!==false){ DB.rev = (DB.rev||0) + 1; }
+  try{ localStorage.setItem('vehicleLogbook3', JSON.stringify(DB)); }catch(e){}
+  renderVersion();
+  if(typeof autoSync==='function') autoSync();
+}
 function restore(){
   try{
     const raw = localStorage.getItem('vehicleLogbook3');
@@ -281,12 +313,152 @@ function restore(){
   }catch(e){}
 }
 function mergeDB(d){
-  DB = Object.assign({settings:{vehicle:''},stations:[],categories:[],fuel:[],costs:[],recurring:[]}, d);
+  DB = Object.assign({settings:{vehicle:''},stations:[],categories:[],fuel:[],costs:[],recurring:[],rev:0}, d);
   DB.stations  = DB.stations  || [];
   DB.categories= DB.categories|| [];
   DB.recurring = DB.recurring || [];
+  DB.rev = +DB.rev || 0;
   DB.costs.forEach(c=>{ if(CAT_MIGRATE[c.cat]) c.cat = CAT_MIGRATE[c.cat]; });
   DB.categories = DB.categories.map(c=>CAT_MIGRATE[c]||c).filter(c=>!DEFAULT_CATS.includes(c));
+}
+
+/* ---------- GitHub-Synchronisation ---------- */
+const GH_KEY = 'fahrtenbuchGh';
+let GH = { owner:'', repo:'', branch:'main', token:'', auto:false };
+const GH_FILE = 'fahrtenbuch.json';
+
+function loadGhConfig(){
+  try{ const raw = localStorage.getItem(GH_KEY); if(raw) GH = Object.assign(GH, JSON.parse(raw)); }catch(e){}
+}
+function fillGhConfig(){
+  document.getElementById('ghOwner').value  = GH.owner||'';
+  document.getElementById('ghRepo').value   = GH.repo||'';
+  document.getElementById('ghBranch').value = GH.branch||'main';
+  document.getElementById('ghToken').value  = GH.token||'';
+  document.getElementById('ghAuto').checked = !!GH.auto;
+}
+function saveGhConfig(){
+  GH.owner  = document.getElementById('ghOwner').value.trim();
+  GH.repo   = document.getElementById('ghRepo').value.trim();
+  GH.branch = document.getElementById('ghBranch').value.trim() || 'main';
+  GH.token  = document.getElementById('ghToken').value.trim();
+  try{ localStorage.setItem(GH_KEY, JSON.stringify(GH)); }catch(e){}
+  if(GH.owner && GH.repo){
+    ghStatus(GH.token ? 'Verbindung gespeichert (Laden + Hochladen).' : 'Verbindung gespeichert (nur Laden – für Hochladen Token eintragen).', 'ok');
+  }else{
+    ghStatus('Bitte Owner und Repo ausfüllen.', 'warn');
+  }
+  toast('Verbindung gespeichert');
+}
+function toggleAuto(){
+  GH.auto = document.getElementById('ghAuto').checked;
+  try{ localStorage.setItem(GH_KEY, JSON.stringify(GH)); }catch(e){}
+  toast(GH.auto?'Auto-Sync aktiviert':'Auto-Sync deaktiviert');
+}
+function ghReady(){ return !!(GH.owner && GH.repo && GH.token); }   // Schreiben: Token nötig
+function ghReadReady(){ return !!(GH.owner && GH.repo); }            // Lesen: bei öffentlichem Repo reicht das
+function ghStatus(msg, kind){
+  const el = document.getElementById('ghStatus');
+  if(!el) return;
+  el.textContent = msg||'';
+  el.style.color = kind==='ok' ? 'var(--teal)' : kind==='err' ? '#B3261E' : kind==='warn' ? 'var(--accent)' : 'var(--ink-soft)';
+}
+/* UTF-8-sicheres Base64 (Umlaute korrekt) */
+function b64Encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64Decode(b64){ return decodeURIComponent(escape(atob(b64.replace(/\n/g,'')))); }
+
+async function ghGetFile(){
+  // gibt {sha, data} oder null bei 404 zurück
+  const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH_FILE}?ref=${encodeURIComponent(GH.branch)}&_=${Date.now()}`;
+  const headers = { 'Accept':'application/vnd.github+json' };
+  if(GH.token) headers['Authorization']='Bearer '+GH.token;
+  const r = await fetch(url, { headers, cache:'no-store' });
+  if(r.status===404) return null;
+  if(r.status===401) throw new Error('Token ungültig (401)');
+  if(r.status===403) throw new Error('Zugriff verweigert (403) – Token-Rechte prüfen');
+  if(!r.ok) throw new Error('GitHub '+r.status);
+  const j = await r.json();
+  const data = JSON.parse(b64Decode(j.content));
+  return { sha:j.sha, data };
+}
+async function ghSync(silent){
+  if(!ghReady()){ if(!silent) ghStatus('Bitte zuerst Owner, Repo und Token speichern.', 'warn'); return; }
+  if(!silent) ghStatus('Lade hoch…');
+  try{
+    let sha = null;
+    try{ const cur = await ghGetFile(); if(cur) sha = cur.sha; }catch(e){ if(!/404/.test(e.message)) throw e; }
+    const body = {
+      message: 'Fahrtenbuch rev '+(DB.rev||0)+' · '+new Date().toISOString(),
+      content: b64Encode(JSON.stringify(DB, null, 2)),
+      branch: GH.branch
+    };
+    if(sha) body.sha = sha;
+    const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH_FILE}`;
+    const r = await fetch(url, {
+      method:'PUT',
+      headers:{ 'Authorization':'Bearer '+GH.token, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json' },
+      body: JSON.stringify(body)
+    });
+    if(!r.ok){
+      const t = await r.text();
+      if(r.status===401) throw new Error('Token ungültig (401)');
+      if(r.status===403) throw new Error('Keine Schreibrechte (403) – Token braucht Contents: Read and write');
+      if(r.status===404) throw new Error('Repo nicht gefunden (404) – Owner/Repo prüfen');
+      if(r.status===409) throw new Error('Konflikt (409) – bitte zuerst ↓ Von GitHub laden');
+      throw new Error('Fehler '+r.status+': '+t.slice(0,80));
+    }
+    ghStatus('✓ Hochgeladen (Rev '+(DB.rev||0)+') · '+new Date().toLocaleTimeString('de-CH'), 'ok');
+  }catch(e){
+    ghStatus('✗ '+e.message, 'err');
+    if(!silent) toast('Sync fehlgeschlagen');
+  }
+}
+async function ghPull(){
+  if(!ghReadReady()){ ghStatus('Bitte zuerst Owner und Repo speichern.', 'warn'); return; }
+  ghStatus('Lade von GitHub…');
+  try{
+    const cur = await ghGetFile();
+    if(!cur){ ghStatus('Noch keine Datei im Repo – lade zuerst hoch.', 'warn'); return; }
+    const d = cur.data;
+    if(!d.fuel || !d.costs) throw new Error('Datei hat kein gültiges Format');
+    const remoteRev = +d.rev||0, localRev = +DB.rev||0;
+    if(localRev > remoteRev){
+      if(!confirm('Achtung: Dein lokaler Stand (Rev '+localRev+') ist neuer als GitHub (Rev '+remoteRev+'). Trotzdem mit der älteren GitHub-Version überschreiben?')){ ghStatus('Laden abgebrochen.'); return; }
+    }
+    mergeDB(d);
+    persist(false); renderAll(); fillSettings();
+    ghStatus('✓ Von GitHub geladen (Rev '+remoteRev+')', 'ok');
+    toast('Von GitHub geladen');
+  }catch(e){
+    ghStatus('✗ '+e.message, 'err');
+  }
+}
+/* Auto-Load beim Start: holt GitHub-Stand, übernimmt ihn nur wenn neuer/gleich */
+async function ghAutoLoad(){
+  if(!ghReadReady()) return;
+  try{
+    const cur = await ghGetFile();
+    if(!cur || !cur.data || !cur.data.fuel) return;
+    const remoteRev = +cur.data.rev||0, localRev = +DB.rev||0;
+    if(remoteRev >= localRev){
+      mergeDB(cur.data);
+      persist(false); renderAll(); fillSettings();
+      ghStatus('✓ Automatisch von GitHub geladen (Rev '+remoteRev+')', 'ok');
+    }else{
+      ghStatus('Lokaler Stand neuer (Rev '+localRev+' vs. '+remoteRev+') – nicht überschrieben. Tippe ↑ Hochladen.', 'warn');
+    }
+  }catch(e){ /* offline o.ä. – still bleiben, lokaler Stand zählt */ }
+}
+/* nach jeder Änderung automatisch hochladen (entkoppelt, blockiert UI nicht) */
+let autoT;
+function autoSync(){
+  if(!GH.auto || !ghReady()) return;
+  clearTimeout(autoT);
+  autoT = setTimeout(()=>{ ghSync(true); }, 1500);
+}
+function renderVersion(){
+  const el = document.getElementById('verLabel');
+  if(el) el.textContent = APP_VERSION+' · Rev '+(DB.rev||0);
 }
 
 /* ---------- Monatliche Buchungen ---------- */
@@ -874,7 +1046,7 @@ function toast(msg){
 function fillSettings(){ document.getElementById('vehName').value = DB.settings.vehicle||''; }
 function renderAll(){ renderHeader(); renderLog(); renderRecList(); renderCatList(); if(!document.getElementById('tab-stats').hidden) renderStats(); }
 
-restore(); fillSettings(); renderAll();
+loadGhConfig(); restore(); fillSettings(); fillGhConfig(); renderAll(); renderVersion(); ghAutoLoad();
 </script>
 </body>
 </html>
