@@ -1,0 +1,129 @@
+{
+  "settings": {
+    "vehicle": ""
+  },
+  "stations": [
+    "HEM Tankstelle Sinnsheim",
+    "Spurt-TS Lustmühle",
+    "Petrol Tech GmbH Gossau",
+    "Agrola Tankstelle",
+    "Coop Pronto 3802",
+    "Spurt-TS Teufnerstr."
+  ],
+  "categories": [],
+  "fuel": [
+    {
+      "id": "mq7zvsxkdzy1",
+      "date": "2025-12-19",
+      "station": "HEM Tankstelle Sinnsheim",
+      "odo": 575,
+      "liters": 46.31,
+      "ppl": 1.75,
+      "total": 81.04,
+      "note": ""
+    },
+    {
+      "id": "mq7zxnzclm1l",
+      "date": "2026-01-08",
+      "station": "Spurt-TS Lustmühle",
+      "odo": 1155,
+      "liters": 47.06,
+      "ppl": 1.75,
+      "total": 82.35,
+      "note": ""
+    },
+    {
+      "id": "mq7zzc3tlzvv",
+      "date": "2026-02-09",
+      "station": "Petrol Tech GmbH Gossau",
+      "odo": 1730,
+      "liters": 46.31,
+      "ppl": 1.75,
+      "total": 81.05,
+      "note": ""
+    },
+    {
+      "id": "mq800mrz4egp",
+      "date": "2026-03-16",
+      "station": "Agrola Tankstelle",
+      "odo": 2385,
+      "liters": 51.49,
+      "ppl": 1.8,
+      "total": 92.69,
+      "note": ""
+    },
+    {
+      "id": "mq8023c7vqwa",
+      "date": "2026-04-23",
+      "station": "Coop Pronto 3802",
+      "odo": 3025,
+      "liters": 50.18,
+      "ppl": 1.8,
+      "total": 90.32,
+      "note": ""
+    },
+    {
+      "id": "mq803knj13ng",
+      "date": "2026-06-10",
+      "station": "Agrola Tankstelle",
+      "odo": 3728,
+      "liters": 54.44,
+      "ppl": 1.8,
+      "total": 98,
+      "note": ""
+    },
+    {
+      "id": "mq8053gs1lr3",
+      "date": "2026-06-10",
+      "station": "Spurt-TS Teufnerstr.",
+      "odo": 4420,
+      "liters": 54.92,
+      "ppl": 1.8,
+      "total": 98.85,
+      "note": ""
+    }
+  ],
+  "costs": [
+    {
+      "id": "mq7w4n623ejv",
+      "date": "2026-06-10",
+      "cat": "Sonstiges",
+      "amount": 688.3,
+      "odo": null,
+      "note": "Srassenverkehrssteuer"
+    },
+    {
+      "id": "mq7y3vxj24a0",
+      "date": "2026-06-10",
+      "cat": "Versicherung",
+      "amount": 1585.48,
+      "odo": null,
+      "note": ""
+    },
+    {
+      "id": "mq7ybmvv01u1",
+      "date": "2026-02-20",
+      "cat": "Reinigung",
+      "amount": 200,
+      "odo": null,
+      "note": "Badge für Waschanlage geladen"
+    }
+  ],
+  "recurring": [
+    {
+      "id": "mq7w0x8nvioh",
+      "name": "Leasing",
+      "amount": 963.7,
+      "start": "2025-12",
+      "end": null
+    },
+    {
+      "id": "mq7w1js3piqi",
+      "name": "Parking",
+      "amount": 240,
+      "start": "2025-12",
+      "end": null
+    }
+  ],
+  "rev": 0
+}
