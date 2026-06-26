@@ -81,6 +81,16 @@
       "ppl": 1.8,
       "total": 98.85,
       "note": ""
+    },
+    {
+      "id": "mqut6szic07a",
+      "date": "2026-06-26",
+      "station": "Spurt-TS Teufnerstr.",
+      "odo": 5021,
+      "liters": 53.29,
+      "ppl": 1.78,
+      "total": 94.85,
+      "note": ""
     }
   ],
   "costs": [
@@ -125,5 +135,5 @@
       "end": null
     }
   ],
-  "rev": 0
+  "rev": 1
 }
