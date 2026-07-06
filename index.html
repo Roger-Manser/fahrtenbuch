@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Fahrtenbuch · Version 1.8 · 2026-07-06 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -186,6 +187,7 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
       <h3 class="sec" style="margin-top:0">Zurücksetzen</h3>
       <button class="btn danger" onclick="resetAll()">Alle Einträge löschen</button>
     </div>
+    <div id="versionInfo" style="text-align:center;font-size:11px;color:var(--ink-soft);padding:4px 0 10px;font-family:var(--mono)"></div>
   </section>
 </main>
 
@@ -265,6 +267,7 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 
 <script>
 'use strict';
+const APP_VERSION = '1.8';
 /* ---------- Zustand ---------- */
 let DB = { settings:{vehicle:''}, stations:[], categories:[], fuel:[], costs:[], recurring:[] };
 const DEFAULT_CATS = ['Ankauf','Zubehör','Service / Reparatur','Versicherung','Steuern','Reifen','Parkieren','Autobahnvignette','Reinigung','Sonstiges'];
@@ -885,6 +888,7 @@ function toast(msg){
 function fillSettings(){ document.getElementById('vehName').value = DB.settings.vehicle||''; }
 function renderAll(){ renderHeader(); renderLog(); renderRecList(); renderCatList(); if(!document.getElementById('tab-stats').hidden) renderStats(); }
 
+document.getElementById('versionInfo').textContent = 'Fahrtenbuch · Version '+APP_VERSION;
 restore(); fillSettings(); renderAll();
 </script>
 </body>
