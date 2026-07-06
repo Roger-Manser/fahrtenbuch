@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Fahrtenbuch · Version 1.8 · 2026-07-06 -->
+<!-- Fahrtenbuch · Version 1.9 · 2026-07-06 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -127,7 +127,10 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 <header>
   <div class="brand">
     <h1>Fahrtenbuch</h1>
-    <span class="veh" id="vehLabel">MEIN AUTO</span>
+    <div style="text-align:right;line-height:1.3">
+      <span class="veh" id="vehLabel">MEIN AUTO</span>
+      <span class="sub" id="hdVer" style="display:block;font-size:10px;color:#7F8F9C;font-family:var(--mono)"></span>
+    </div>
   </div>
   <div class="odometer" id="odo"></div>
   <div class="statrow">
@@ -161,6 +164,27 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
         Eigene Kategorien fügst du beim Erfassen über «+ Neue Kategorie…» hinzu. Sie erscheinen hier und können umbenannt oder gelöscht werden. Die eingebauten Kategorien bleiben fix.
       </p>
       <div class="reclist" id="catList"></div>
+    </div>
+    <div class="card">
+      <h3 class="sec" style="margin-top:0">GitHub-Sync</h3>
+      <p style="font-size:13px;color:var(--ink-soft);line-height:1.5">
+        Speichert die Daten als <b>fahrtenbuch.json</b> in dein Repo, damit Handy, PC und Web denselben Stand haben. Fine-grained Token mit «Contents: Read and write» nötig.
+      </p>
+      <div id="syncStatus" style="font-size:13px;padding:8px 10px;border-radius:8px;background:var(--bg);margin-bottom:8px"></div>
+      <label>GitHub-Benutzer</label>
+      <input id="syOwner" placeholder="roger-manser" autocomplete="off">
+      <div class="row2">
+        <div><label>Repository</label><input id="syRepo" placeholder="fahrtenbuch" autocomplete="off"></div>
+        <div><label>Branch</label><input id="syBranch" placeholder="main" autocomplete="off"></div>
+      </div>
+      <label>Token (fine-grained PAT)</label>
+      <input id="syToken" type="password" placeholder="github_pat_…" autocomplete="off">
+      <div class="hint">Der Token bleibt nur auf diesem Gerät gespeichert und wird nie in die JSON geschrieben.</div>
+      <button class="btn primary" onclick="saveSyncSettings()">Sync speichern &amp; verbinden</button>
+      <div class="filebtns">
+        <button class="btn ghost" onclick="syncPull(true)">Jetzt laden</button>
+        <button class="btn ghost" onclick="syncPush(true)">Jetzt hochladen</button>
+      </div>
     </div>
     <div class="card">
       <h3 class="sec" style="margin-top:0">Fahrzeug</h3>
@@ -267,9 +291,11 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 
 <script>
 'use strict';
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 /* ---------- Zustand ---------- */
-let DB = { settings:{vehicle:''}, stations:[], categories:[], fuel:[], costs:[], recurring:[] };
+let DB = { settings:{vehicle:''}, stations:[], categories:[], fuel:[], costs:[], recurring:[], rev:0 };
+let SY = { owner:'', repo:'', branch:'main', token:'', sha:null };
+let syncing = false;
 const DEFAULT_CATS = ['Ankauf','Zubehör','Service / Reparatur','Versicherung','Steuern','Reifen','Parkieren','Autobahnvignette','Reinigung','Sonstiges'];
 const CAT_MIGRATE = {'Purchase':'Ankauf','Accessories':'Zubehör','Service / Repair':'Service / Reparatur','Insurance':'Versicherung','Tax':'Steuern','Tires':'Reifen','Parking':'Parkieren','Highway vignette':'Autobahnvignette','Cleaning':'Reinigung','Other':'Sonstiges'};
 let editId = null, entryType = 'fuel';
@@ -290,15 +316,143 @@ function restore(){
     const raw = localStorage.getItem('vehicleLogbook3');
     if(raw){ const d = JSON.parse(raw); if(d && d.fuel && d.costs) mergeDB(d); }
   }catch(e){}
+  try{
+    const s = JSON.parse(localStorage.getItem('vehicleLogbookSync')||'null');
+    if(s){ SY = Object.assign(SY, s); }
+  }catch(e){}
 }
 function mergeDB(d){
-  DB = Object.assign({settings:{vehicle:''},stations:[],categories:[],fuel:[],costs:[],recurring:[]}, d);
+  DB = Object.assign({settings:{vehicle:''},stations:[],categories:[],fuel:[],costs:[],recurring:[],rev:0}, d);
   DB.stations  = DB.stations  || [];
   DB.categories= DB.categories|| [];
   DB.recurring = DB.recurring || [];
+  DB.rev       = +DB.rev || 0;
   DB.recurring.forEach(r=>{ if(r.interval!=='y') r.interval='m'; });
   DB.costs.forEach(c=>{ if(CAT_MIGRATE[c.cat]) c.cat = CAT_MIGRATE[c.cat]; });
   DB.categories = DB.categories.map(c=>CAT_MIGRATE[c]||c).filter(c=>!DEFAULT_CATS.includes(c));
+}
+
+/* ---------- GitHub-Sync ---------- */
+const b64encode = s => btoa(unescape(encodeURIComponent(s)));
+const b64decode = s => decodeURIComponent(escape(atob(s)));
+const syncConfigured = () => !!(SY.owner && SY.repo && SY.token);
+const FILE = 'fahrtenbuch.json';
+
+function persistSync(){
+  try{ localStorage.setItem('vehicleLogbookSync', JSON.stringify(SY)); }catch(e){}
+}
+function ghUrl(){
+  return 'https://api.github.com/repos/'+SY.owner+'/'+SY.repo+'/contents/'+FILE+'?ref='+(SY.branch||'main');
+}
+function setSyncStatus(txt, kind){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  const col = kind==='ok'?'var(--accent-soft)':kind==='err'?'#FCE4E2':'var(--bg)';
+  const ink = kind==='err'?'#B3261E':'var(--ink)';
+  el.style.background = col; el.style.color = ink;
+  el.innerHTML = txt;
+}
+function refreshSyncStatus(){
+  if(!syncConfigured()){ setSyncStatus('Nicht verbunden – nur lokal auf diesem Gerät gespeichert.'); return; }
+  setSyncStatus('Verbunden mit '+esc(SY.owner)+'/'+esc(SY.repo)+' · Revision '+DB.rev, 'ok');
+}
+
+async function ghRead(){
+  const res = await fetch(ghUrl(), {
+    headers:{ 'Authorization':'Bearer '+SY.token, 'Accept':'application/vnd.github+json' },
+    cache:'no-store'
+  });
+  if(res.status===404) return { notFound:true };
+  if(!res.ok) throw new Error('GitHub '+res.status);
+  const j = await res.json();
+  SY.sha = j.sha;
+  const data = JSON.parse(b64decode(j.content));
+  return { data };
+}
+async function ghWrite(message){
+  const body = {
+    message: message||('Fahrtenbuch rev '+DB.rev),
+    content: b64encode(JSON.stringify(DB,null,2)),
+    branch: SY.branch||'main'
+  };
+  if(SY.sha) body.sha = SY.sha;
+  const res = await fetch('https://api.github.com/repos/'+SY.owner+'/'+SY.repo+'/contents/'+FILE, {
+    method:'PUT',
+    headers:{ 'Authorization':'Bearer '+SY.token, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json' },
+    body: JSON.stringify(body)
+  });
+  if(!res.ok){ const t=await res.text(); throw new Error('GitHub '+res.status+' '+t.slice(0,120)); }
+  const j = await res.json();
+  SY.sha = j.content && j.content.sha;
+}
+
+async function syncPull(manual){
+  if(!syncConfigured()){ if(manual) toast('Bitte zuerst Sync einrichten'); return; }
+  if(syncing) return;
+  syncing = true; setSyncStatus('Lade von GitHub…');
+  try{
+    const r = await ghRead();
+    if(r.notFound){
+      setSyncStatus('Noch keine Datei im Repo – wird beim ersten Hochladen erstellt.', 'ok');
+      if(manual) toast('Noch keine Daten im Repo');
+    }else{
+      const remoteRev = +r.data.rev||0;
+      if(manual || remoteRev >= DB.rev){
+        mergeDB(r.data);
+        persist(); fillSettings(); renderAll();
+        toast('Von GitHub geladen (Rev '+DB.rev+')');
+      }else{
+        toast('Lokaler Stand ist neuer – nichts überschrieben');
+      }
+    }
+    refreshSyncStatus();
+  }catch(e){
+    setSyncStatus('Fehler beim Laden: '+esc(e.message), 'err');
+    if(manual) toast('Laden fehlgeschlagen');
+  }
+  syncing = false;
+}
+
+async function syncPush(manual){
+  if(!syncConfigured()){ if(manual) toast('Bitte zuerst Sync einrichten'); return; }
+  if(syncing){ return; }
+  syncing = true; setSyncStatus('Speichere auf GitHub…');
+  try{
+    try{ const r = await ghRead(); if(!r.notFound){ const rr=+r.data.rev||0; if(rr>DB.rev){ DB.rev = rr; } } }catch(e){}
+    DB.rev = (+DB.rev||0) + 1;
+    persist();
+    await ghWrite();
+    refreshSyncStatus();
+    if(manual) toast('Auf GitHub gespeichert (Rev '+DB.rev+')');
+  }catch(e){
+    setSyncStatus('Fehler beim Speichern: '+esc(e.message), 'err');
+    if(manual) toast('Speichern fehlgeschlagen');
+  }
+  syncing = false;
+}
+
+let pushTimer=null;
+function schedulePush(){
+  if(!syncConfigured()) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(()=>syncPush(false), 1200);
+}
+
+function loadSyncSettings(){
+  document.getElementById('syOwner').value  = SY.owner||'';
+  document.getElementById('syRepo').value   = SY.repo||'';
+  document.getElementById('syBranch').value = SY.branch||'main';
+  document.getElementById('syToken').value  = SY.token||'';
+}
+function saveSyncSettings(){
+  SY.owner  = document.getElementById('syOwner').value.trim();
+  SY.repo   = document.getElementById('syRepo').value.trim();
+  SY.branch = document.getElementById('syBranch').value.trim()||'main';
+  SY.token  = document.getElementById('syToken').value.trim();
+  persistSync();
+  refreshSyncStatus();
+  if(syncConfigured()){ toast('Sync gespeichert – verbinde…'); syncPull(true); }
+  else toast('Bitte Benutzer, Repo und Token ausfüllen');
 }
 
 /* ---------- Monatliche Buchungen ---------- */
@@ -678,7 +832,7 @@ function renameCat(i){
   DB.categories = DB.categories.filter(c=>c!==old);
   if(!DEFAULT_CATS.includes(nn) && !DB.categories.includes(nn)) DB.categories.push(nn);
   DB.costs.forEach(c=>{ if(c.cat===old) c.cat=nn; });
-  persist(); renderAll(); toast('Kategorie umbenannt');
+  persist(); schedulePush(); renderAll(); toast('Kategorie umbenannt');
 }
 function deleteCat(i){
   const old = catSorted[i];
@@ -688,7 +842,7 @@ function deleteCat(i){
     : 'Kategorie «'+old+'» löschen?';
   if(!confirm(msg)) return;
   DB.categories = DB.categories.filter(c=>c!==old);
-  persist(); renderAll(); toast('Kategorie gelöscht');
+  persist(); schedulePush(); renderAll(); toast('Kategorie gelöscht');
 }
 
 /* ---------- Auto-Berechnung Liter / Preis / Total ---------- */
@@ -806,7 +960,7 @@ function saveEntry(){
     const obj = { id: editId||uid(), name, amount, start, end, interval: document.getElementById('rInterval').value };
     if(editId){ const i=DB.recurring.findIndex(x=>x.id===editId); DB.recurring[i]=obj; } else DB.recurring.push(obj);
   }
-  persist(); renderAll(); closeSheet(); toast(wasEdit?'Eintrag aktualisiert':'Eintrag hinzugefügt');
+  persist(); schedulePush(); renderAll(); closeSheet(); toast(wasEdit?'Eintrag aktualisiert':'Eintrag hinzugefügt');
 }
 function deleteEntry(){
   if(!editId) return;
@@ -816,13 +970,13 @@ function deleteEntry(){
   DB.fuel      = DB.fuel.filter(x=>x.id!==editId);
   DB.costs     = DB.costs.filter(x=>x.id!==editId);
   DB.recurring = DB.recurring.filter(x=>x.id!==editId);
-  persist(); renderAll(); closeSheet(); toast('Eintrag gelöscht');
+  persist(); schedulePush(); renderAll(); closeSheet(); toast('Eintrag gelöscht');
 }
 
 /* ---------- Einstellungen ---------- */
 function saveSettings(){
   DB.settings.vehicle = document.getElementById('vehName').value.trim();
-  persist(); renderHeader(); toast('Einstellungen gespeichert');
+  persist(); schedulePush(); renderHeader(); toast('Einstellungen gespeichert');
 }
 
 /* ---------- Datei speichern / laden / exportieren ---------- */
@@ -845,7 +999,7 @@ function loadJSON(ev){
       const d = JSON.parse(r.result);
       if(!d.fuel || !d.costs) throw 0;
       mergeDB(d);
-      persist(); renderAll(); fillSettings(); toast('Fahrtenbuch geladen');
+      persist(); schedulePush(); renderAll(); fillSettings(); toast('Fahrtenbuch geladen');
     }catch(e){ toast('Diese Datei konnte nicht gelesen werden'); }
   };
   r.readAsText(f); ev.target.value='';
@@ -875,7 +1029,7 @@ function exportCSV(kind){
 function resetAll(){
   if(!confirm('ALLE Tankstopps, Kosten und wiederkehrenden Kosten löschen? Das kann nicht rückgängig gemacht werden.')) return;
   DB.fuel=[]; DB.costs=[]; DB.recurring=[];
-  persist(); renderAll(); toast('Alle Einträge gelöscht');
+  persist(); schedulePush(); renderAll(); toast('Alle Einträge gelöscht');
 }
 
 /* ---------- Sonstiges ---------- */
@@ -889,7 +1043,16 @@ function fillSettings(){ document.getElementById('vehName').value = DB.settings.
 function renderAll(){ renderHeader(); renderLog(); renderRecList(); renderCatList(); if(!document.getElementById('tab-stats').hidden) renderStats(); }
 
 document.getElementById('versionInfo').textContent = 'Fahrtenbuch · Version '+APP_VERSION;
-restore(); fillSettings(); renderAll();
+document.getElementById('hdVer').textContent = 'v'+APP_VERSION;
+restore(); fillSettings(); loadSyncSettings(); renderAll(); refreshSyncStatus();
+if(syncConfigured()) syncPull(false);
+
+/* ---------- Service Worker (Update-Auslieferung) ---------- */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).catch(()=>{});
+}
+
+
 </script>
 </body>
 </html>
