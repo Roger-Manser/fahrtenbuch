@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Fahrtenbuch · Version 1.9 · 2026-07-06 -->
+<!-- Fahrtenbuch · Version 2.2 · 2026-08-03 -->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -7,7 +7,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1B2733">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Fahrtenbuch</title>
@@ -234,10 +242,16 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 
     <div id="fuelFields">
       <label>Tankstelle</label>
-      <select id="fStation" onchange="stationChanged()"></select>
-      <input id="fStationNew" placeholder="Name der neuen Tankstelle" hidden style="margin-top:8px">
+      <div style="display:flex;gap:8px">
+        <input id="fStation" list="stationList" placeholder="Name eingeben oder wählen" autocomplete="off" style="flex:1">
+        <button type="button" id="gpsBtn" onclick="detectStation()" title="Tankstelle per GPS erkennen"
+          style="flex:0 0 46px;height:44px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:18px;cursor:pointer">📍</button>
+      </div>
+      <datalist id="stationList"></datalist>
+      <div id="gpsHint" class="hint" style="margin-top:4px"></div>
       <label>Kilometerstand (km)</label>
       <input id="fOdo" type="number" inputmode="numeric" placeholder="z.B. 84512">
+      <div id="odoHint" class="hint" style="margin-top:4px;display:none"></div>
       <div class="row2">
         <div><label>Liter</label><input id="fLiters" type="number" inputmode="decimal" step="0.01" placeholder="38.20"></div>
         <div><label>Preis / Liter (CHF)</label><input id="fPpl" type="text" inputmode="numeric" placeholder="1.789" autocomplete="off"></div>
@@ -291,9 +305,9 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 
 <script>
 'use strict';
-const APP_VERSION = '1.9';
+const APP_VERSION = '2.2';
 /* ---------- Zustand ---------- */
-let DB = { settings:{vehicle:''}, stations:[], categories:[], fuel:[], costs:[], recurring:[], rev:0 };
+let DB = { settings:{vehicle:''}, stations:[], stationGeo:{}, categories:[], fuel:[], costs:[], recurring:[], rev:0 };
 let SY = { owner:'', repo:'', branch:'main', token:'', sha:null };
 let syncing = false;
 const DEFAULT_CATS = ['Ankauf','Zubehör','Service / Reparatur','Versicherung','Steuern','Reifen','Parkieren','Autobahnvignette','Reinigung','Sonstiges'];
@@ -322,8 +336,9 @@ function restore(){
   }catch(e){}
 }
 function mergeDB(d){
-  DB = Object.assign({settings:{vehicle:''},stations:[],categories:[],fuel:[],costs:[],recurring:[],rev:0}, d);
+  DB = Object.assign({settings:{vehicle:''},stations:[],stationGeo:{},categories:[],fuel:[],costs:[],recurring:[],rev:0}, d);
   DB.stations  = DB.stations  || [];
+  DB.stationGeo= DB.stationGeo|| {};
   DB.categories= DB.categories|| [];
   DB.recurring = DB.recurring || [];
   DB.rev       = +DB.rev || 0;
@@ -572,7 +587,7 @@ function bigstat(v,l){ return '<div class="bigstat"><div class="v">'+v+'</div><d
 
 /* ---------- SVG-Diagramme (offline, ohne Bibliotheken) ---------- */
 const PAL = ['#E8590C','#5A4FB5','#2F6F6A','#C9821A','#A04A6E','#3F6FA8','#5B8A3C','#888880'];
-const CW=340, CH=180, CL=42, CR=8, CT=12, CB=26;
+const CW=340, CH=190, CL=42, CR=8, CT=12, CB=36;
 
 function gridAndAxis(mn,mx,Y,fmt){
   let s='';
@@ -596,11 +611,7 @@ function priceTrendSVG(){
   s+=gridAndAxis(mn,mx,Y,v=>v.toFixed(2));
   s+='<polyline fill="none" stroke="#E8590C" stroke-width="2" points="'+vals.map((v,i)=>X(i)+','+Y(v)).join(' ')+'"/>';
   vals.forEach((v,i)=>{ s+='<circle cx="'+X(i)+'" cy="'+Y(v)+'" r="3" fill="#E8590C"/>'; });
-  const step=Math.ceil(vals.length/5);
-  pts.forEach((f,i)=>{ if(i%step===0 || i===vals.length-1){
-    const [y,m,d]=f.date.split('-');
-    s+='<text x="'+X(i)+'" y="'+(CH-6)+'" text-anchor="middle" font-size="8" fill="#5B6B78">'+d+'.'+m+'.</text>';
-  }});
+  s+=xLabels(pts, X, f=>ddmm(f.date));
   return '<h3 class="sec">Preis pro Liter (CHF / l)</h3><div class="card">'+s+'</svg></div>';
 }
 function consumptionSVG(){
@@ -622,11 +633,7 @@ function consumptionSVG(){
   });
   s+='<line x1="'+CL+'" y1="'+Y(avg)+'" x2="'+(CW-CR)+'" y2="'+Y(avg)+'" stroke="#5B6B78" stroke-width="1.5" stroke-dasharray="5 4"/>';
   s+='<text x="'+(CW-CR)+'" y="'+(Y(avg)-4)+'" text-anchor="end" font-size="9" fill="#5B6B78">Ø '+avg.toFixed(1)+'</text>';
-  const step=Math.ceil(pts.length/5);
-  pts.forEach((p,i)=>{ if(i%step===0 || i===pts.length-1){
-    const [y,m,d]=p.f.date.split('-');
-    s+='<text x="'+X(i)+'" y="'+(CH-6)+'" text-anchor="middle" font-size="8" fill="#5B6B78">'+d+'.'+m+'.</text>';
-  }});
+  s+=xLabels(pts, X, p=>ddmm(p.f.date));
   return '<h3 class="sec">Verbrauch (l / 100 km)</h3><div class="card">'+s+'</svg>'+
     '<div class="hint">Berechnet aus der km-Differenz zwischen den Tankstopps – am genauesten, wenn du jeweils volltankst.</div></div>';
 }
@@ -634,6 +641,30 @@ function legendRow(color,label){
   return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:11px;color:var(--ink-soft)">'+
     '<span style="width:10px;height:10px;border-radius:2px;background:'+color+'"></span>'+label+'</span>';
 }
+// Responsive X-Achsenbeschriftung: Schrittweite aus verfügbarer Breite,
+// Rotation wenn eng, damit Labels auf schmalen Displays nicht überlappen.
+function xLabels(items, Xfn, labelFn){
+  const n = items.length;
+  if(!n) return '';
+  const pw = CW-CL-CR;
+  const approxLabelW = 30;               // geschätzte Breite "dd.mm."
+  const maxLabels = Math.max(2, Math.floor(pw/approxLabelW));
+  const step = Math.ceil(n/maxLabels);
+  const perLabel = pw/n;
+  const rotate = perLabel < 22;          // eng -> drehen
+  let s='';
+  items.forEach((it,i)=>{
+    if(i%step!==0 && i!==n-1) return;
+    const x=Xfn(i), txt=labelFn(it);
+    if(rotate){
+      s+='<text x="'+x+'" y="'+(CH-4)+'" text-anchor="end" font-size="8" fill="#5B6B78" transform="rotate(-45 '+x+' '+(CH-4)+')">'+txt+'</text>';
+    }else{
+      s+='<text x="'+x+'" y="'+(CH-6)+'" text-anchor="middle" font-size="8" fill="#5B6B78">'+txt+'</text>';
+    }
+  });
+  return s;
+}
+const ddmm = dateStr => { const [y,m,d]=dateStr.split('-'); return d+'.'+m+'.'; };
 function stackedMonthSVG(){
   const byM = {};
   DB.fuel.forEach(f=>{ const k=monthKey(f.date); (byM[k]=byM[k]||{f:0,r:0,o:0}).f+=(+f.total||0); });
@@ -656,8 +687,8 @@ function stackedMonthSVG(){
       s+='<rect x="'+(X(i)-bw/2)+'" y="'+y2+'" width="'+bw+'" height="'+(y1-y2)+'" fill="'+col+'"/>';
       base+=v;
     });
-    s+='<text x="'+X(i)+'" y="'+(CH-6)+'" text-anchor="middle" font-size="8" fill="#5B6B78">'+k.slice(5)+'.'+k.slice(2,4)+'</text>';
   });
+  s+=xLabels(months, i=>X(i), m=>m[0].slice(5)+'.'+m[0].slice(2,4));
   return '<h3 class="sec">Kosten pro Monat (CHF)</h3><div class="card">'+
     '<div style="margin-bottom:8px">'+legendRow('#E8590C','Treibstoff')+legendRow('#5A4FB5','Wiederkehrend')+legendRow('#2F6F6A','Einmalig')+'</div>'+
     s+'</svg></div>';
@@ -775,20 +806,47 @@ document.querySelectorAll('nav button').forEach(b=>{
 });
 
 /* ---------- Tankstellen-Auswahl ---------- */
-function fillStationSelect(selected){
-  const sel = document.getElementById('fStation');
-  const opts = ['<option value="">– keine Tankstelle –</option>']
-    .concat([...DB.stations].sort((a,b)=>a.localeCompare(b)).map(s=>'<option'+(s===selected?' selected':'')+'>'+esc(s)+'</option>'))
-    .concat(['<option value="__new">+ Neue Tankstelle…</option>']);
-  sel.innerHTML = opts.join('');
-  if(selected && !DB.stations.includes(selected)){ sel.value=''; }
-  stationChanged();
+function fillStationList(selected){
+  const dl = document.getElementById('stationList');
+  dl.innerHTML = [...DB.stations].sort((a,b)=>a.localeCompare(b))
+    .map(s=>'<option value="'+esc(s)+'">').join('');
+  document.getElementById('fStation').value = selected||'';
+  document.getElementById('gpsHint').textContent = '';
 }
-function stationChanged(){
-  const isNew = document.getElementById('fStation').value==='__new';
-  const inp = document.getElementById('fStationNew');
-  inp.hidden = !isNew;
-  if(isNew) inp.focus();
+const GPS_RADIUS_M = 250; // Umkreis, in dem eine bekannte Tankstelle erkannt wird
+function haversine(a,b){
+  const R=6371000, toRad=x=>x*Math.PI/180;
+  const dLat=toRad(b.lat-a.lat), dLng=toRad(b.lng-a.lng);
+  const s=Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+function detectStation(){
+  const hint = document.getElementById('gpsHint');
+  if(!navigator.geolocation){ hint.textContent='GPS wird von diesem Gerät nicht unterstützt.'; return; }
+  hint.textContent='Standort wird ermittelt…';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const here = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+    let best=null, bestD=Infinity;
+    for(const [name,geo] of Object.entries(DB.stationGeo||{})){
+      if(!geo || typeof geo.lat!=='number') continue;
+      const d = haversine(here, geo);
+      if(d<bestD){ bestD=d; best=name; }
+    }
+    window._lastGeo = here; // wird beim Speichern der gewählten Station verwendet
+    if(best && bestD<=GPS_RADIUS_M){
+      document.getElementById('fStation').value = best;
+      hint.textContent = '📍 Erkannt: '+best+' ('+Math.round(bestD)+' m entfernt)';
+    }else if(Object.keys(DB.stationGeo||{}).length===0){
+      hint.textContent='📍 Standort gespeichert. Er wird dieser Tankstelle beim Speichern zugeordnet – ab dem nächsten Mal wird sie automatisch erkannt.';
+    }else{
+      const near = best ? ' (nächste: '+best+', '+Math.round(bestD)+' m)' : '';
+      hint.textContent='📍 Keine bekannte Tankstelle in der Nähe'+near+'. Name eingeben – der Standort wird zugeordnet.';
+    }
+  }, err=>{
+    hint.textContent = err.code===1
+      ? 'Standortzugriff verweigert. In den Browser-Einstellungen erlauben, um Tankstellen automatisch zu erkennen.'
+      : 'Standort konnte nicht ermittelt werden.';
+  }, {enableHighAccuracy:true, timeout:8000, maximumAge:30000});
 }
 
 /* ---------- Kategorie-Auswahl & Verwaltung ---------- */
@@ -860,6 +918,21 @@ function formatPpl(el){
   const digits = el.value.replace(/\D/g,'').slice(0,4);
   el.value = digits.length>1 ? digits[0]+'.'+digits.slice(1) : digits;
 }
+document.getElementById('fOdo').addEventListener('input', ()=>{
+  const hint = document.getElementById('odoHint');
+  const odo = parseFloat(document.getElementById('fOdo').value);
+  if(!(odo>0)){ hint.style.display='none'; return; }
+  const others = DB.fuel.filter(f=>f.id!==editId);
+  const prev = others.filter(f=>+f.odo<odo).sort((a,b)=>b.odo-a.odo)[0];
+  const below = others.filter(f=>+f.odo>odo).sort((a,b)=>a.odo-b.odo)[0];
+  if(below){
+    hint.style.display='block'; hint.style.color='#B3261E';
+    hint.textContent='⚠ Höher erfasster Stand vorhanden: '+Math.round(below.odo).toLocaleString('de-CH')+' km';
+  }else if(prev){
+    hint.style.display='block'; hint.style.color='var(--ink-soft)';
+    hint.textContent='+'+Math.round(odo-prev.odo).toLocaleString('de-CH')+' km seit letztem Tankstopp';
+  }else{ hint.style.display='none'; }
+});
 function autoCalc(){
   if(lastEdited.length<2) return;
   const target = calcIds.find(id=>!lastEdited.includes(id));
@@ -886,7 +959,7 @@ function openSheet(type, id){
   document.getElementById('deleteBtn').hidden = !editId;
   document.getElementById('typeSwitch').style.display = editId?'none':'flex';
 
-  ['fOdo','fLiters','fPpl','fTotal','fFuelNote','fAmount','fOdoC','fCostNote','rName','rAmount','rEnd','fStationNew','fCatNew'].forEach(i=>{
+  ['fOdo','fLiters','fPpl','fTotal','fFuelNote','fAmount','fOdoC','fCostNote','rName','rAmount','rEnd','fCatNew'].forEach(i=>{
     const el=document.getElementById(i); el.value=''; el.classList.remove('calc');
   });
   document.getElementById('fDate').value = today();
@@ -894,12 +967,15 @@ function openSheet(type, id){
   document.getElementById('rInterval').value = 'm';
   fillCatSelect('Service / Reparatur');
   lastEdited = [];
-  fillStationSelect('');
+  fillStationList('');
+  window._lastGeo = null;
+  document.getElementById('gpsHint').textContent = '';
+  document.getElementById('odoHint').style.display = 'none';
 
   if(editId){
     if(type==='fuel'){
       const f = DB.fuel.find(x=>x.id===editId);
-      if(f){ fDate.value=f.date; fillStationSelect(f.station||''); fOdo.value=f.odo; fLiters.value=f.liters; fPpl.value=f.ppl; fTotal.value=f.total; fFuelNote.value=f.note||''; lastEdited=['fLiters','fPpl']; }
+      if(f){ fDate.value=f.date; fillStationList(f.station||''); fOdo.value=f.odo; fLiters.value=f.liters; fPpl.value=f.ppl; fTotal.value=f.total; fFuelNote.value=f.note||''; lastEdited=['fLiters','fPpl']; }
     }else if(type==='cost'){
       const c = DB.costs.find(x=>x.id===editId);
       if(c){ fDate.value=c.date; fillCatSelect(c.cat); fAmount.value=c.amount; fOdoC.value=c.odo||''; fCostNote.value=c.note||''; }
@@ -930,10 +1006,30 @@ function saveEntry(){
     const total = parseFloat(document.getElementById('fTotal').value);
     if(!(odo>0)){ toast('Bitte den Kilometerstand eingeben'); return; }
     if(!(liters>0) || !(total>0)){ toast('Bitte Liter und Preis eingeben'); return; }
-    let station = document.getElementById('fStation').value;
-    if(station==='__new'){
-      station = document.getElementById('fStationNew').value.trim();
-      if(station && !DB.stations.includes(station)) DB.stations.push(station);
+    // Plausibilitätsprüfung Kilometerstand gegen benachbarte Tankstopps
+    const others = DB.fuel.filter(f=>f.id!==editId);
+    const below = others.filter(f=>f.date<=date && +f.odo>odo).sort((a,b)=>b.odo-a.odo)[0];
+    const above = others.filter(f=>f.date>=date && +f.odo<odo).sort((a,b)=>a.odo-b.odo)[0];
+    if(below){
+      if(!confirm('Achtung: Ein früherer Tankstopp ('+fmtDate(below.date)+') hat bereits '+Math.round(below.odo).toLocaleString('de-CH')+' km – mehr als die eingegebenen '+Math.round(odo).toLocaleString('de-CH')+' km. Trotzdem speichern?')) return;
+    }else if(above){
+      if(!confirm('Achtung: Ein späterer Tankstopp ('+fmtDate(above.date)+') hat nur '+Math.round(above.odo).toLocaleString('de-CH')+' km – weniger als die eingegebenen '+Math.round(odo).toLocaleString('de-CH')+' km. Trotzdem speichern?')) return;
+    }
+    // Verbrauchs-Plausibilität (grobe Ober-/Untergrenze) als sanfter Hinweis
+    const prev = others.filter(f=>+f.odo<odo).sort((a,b)=>b.odo-a.odo)[0];
+    if(prev){
+      const dk = odo - prev.odo;
+      if(dk>0){ const cons = liters/dk*100;
+        if(cons>25 || cons<2){
+          if(!confirm('Der rechnerische Verbrauch zu diesem Tankstopp wäre '+cons.toFixed(1)+' l/100 km – ungewöhnlich. Kilometerstand und Liter korrekt? Trotzdem speichern?')) return;
+        }
+      }
+    }
+    let station = document.getElementById('fStation').value.trim();
+    if(station && !DB.stations.includes(station)) DB.stations.push(station);
+    // GPS-Koordinaten der Station lernen/aktualisieren
+    if(station && window._lastGeo && typeof window._lastGeo.lat==='number'){
+      DB.stationGeo[station] = {lat:window._lastGeo.lat, lng:window._lastGeo.lng};
     }
     const obj = { id: editId||uid(), date, station, odo, liters, ppl: ppl>0?ppl:total/liters, total, note: fFuelNote.value.trim() };
     if(editId){ const i=DB.fuel.findIndex(x=>x.id===editId); DB.fuel[i]=obj; } else DB.fuel.push(obj);

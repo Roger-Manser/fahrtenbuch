@@ -1,6 +1,12 @@
-// Fahrtenbuch Service Worker · Version 1.9
-const CACHE = 'fahrtenbuch-v1.9';
-const ASSETS = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+// Fahrtenbuch Service Worker · Version 2.2
+const CACHE = 'fahrtenbuch-v2.2';
+const ASSETS = [
+  './', 'index.html', 'manifest.json',
+  'icon-192.png', 'icon-512.png', 'icon-maskable-512.png',
+  'apple-touch-icon.png', 'apple-touch-icon-120.png', 'apple-touch-icon-152.png',
+  'apple-touch-icon-167.png', 'apple-touch-icon-180.png',
+  'favicon.ico', 'favicon-16.png', 'favicon-32.png', 'favicon-48.png'
+];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -19,11 +25,7 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-
-  // GitHub-API nie cachen (immer frische Daten)
   if (url.hostname === 'api.github.com') return;
-
-  // Navigations-/HTML-Anfragen: network-first, damit neue Versionen sofort kommen
   if (req.mode === 'navigate' || (req.headers.get('accept')||'').includes('text/html')) {
     e.respondWith(
       fetch(req).then(res => {
@@ -34,8 +36,6 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-
-  // Übrige Assets: cache-first mit Netz-Fallback
   e.respondWith(
     caches.match(req).then(r => r || fetch(req).then(res => {
       const copy = res.clone();
