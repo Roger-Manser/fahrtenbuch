@@ -10,6 +10,7 @@
     "Coop Pronto 3802",
     "Spurt-TS Teufnerstr."
   ],
+  "stationGeo": {},
   "categories": [],
   "fuel": [
     {
@@ -125,15 +126,17 @@
       "name": "Leasing",
       "amount": 963.7,
       "start": "2025-12",
-      "end": null
+      "end": null,
+      "interval": "m"
     },
     {
       "id": "mq7w1js3piqi",
       "name": "Parking",
       "amount": 240,
       "start": "2025-12",
-      "end": null
+      "end": null,
+      "interval": "m"
     }
   ],
-  "rev": 2
+  "rev": 3
 }
