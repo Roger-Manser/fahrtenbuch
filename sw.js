@@ -1,5 +1,5 @@
-// Fahrtenbuch Service Worker · Version 2.2
-const CACHE = 'fahrtenbuch-v2.2';
+// Fahrtenbuch Service Worker · Version 2.3
+const CACHE = "fahrtenbuch-v2.3";
 const ASSETS = [
   './', 'index.html', 'manifest.json',
   'icon-192.png', 'icon-512.png', 'icon-maskable-512.png',
