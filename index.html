@@ -1151,210 +1151,75 @@ if('serviceWorker' in navigator){
 
 </script>
 
-<div class="settings-simple">
-  <h2>⚙️ Einstellungen</h2>
-  <h3>GitHub Token</h3>
-  <input type="password" id="setting_github_token" placeholder="ghp_..." />
-  <h3>GitHub Owner</h3>
-  <input type="text" id="setting_github_owner" value="roger-manser" />
-  <h3>Repository</h3>
-  <input type="text" id="setting_github_repo" placeholder="rezeptbuch" />
-  <button class="settings-btn-test" onclick="appSettingsGlobal.testGitHub()">🧪 Test GitHub</button>
-  <h3>Anthropic API Key</h3>
-  <input type="password" id="setting_anthropic_api_key" placeholder="sk-ant-..." />
-  <button class="settings-btn-test" onclick="appSettingsGlobal.testAnthropicKey()">🧪 Test API</button>
-  <br />
-  <button class="settings-btn-save" onclick="appSettingsGlobal.saveSettings()">💾 Speichern</button>
-  <button class="settings-btn-export" onclick="appSettingsGlobal.exportSettings()">📥 Export</button>
-  <button class="settings-btn-import" onclick="appSettingsGlobal.importSettings()">📤 Import</button>
-  <button class="settings-btn-delete" onclick="appSettingsGlobal.clearAll()">🗑️ Löschen</button>
+<div style="max-width:600px;margin:20px auto;padding:20px;background:#f5f5f5;border-radius:8px;">
+  <h3>⚙️ Einstellungen</h3>
+  <input type="password" id="setting_github_token" placeholder="GitHub Token (ghp_...)" style="width:100%;padding:8px;margin:5px 0;box-sizing:border-box;" />
+  <input type="text" id="setting_github_owner" placeholder="GitHub Owner" style="width:100%;padding:8px;margin:5px 0;box-sizing:border-box;" />
+  <input type="text" id="setting_github_repo" placeholder="Repository" style="width:100%;padding:8px;margin:5px 0;box-sizing:border-box;" />
+  <input type="password" id="setting_anthropic_api_key" placeholder="Anthropic API Key (sk-ant-...)" style="width:100%;padding:8px;margin:5px 0;box-sizing:border-box;" />
+  <div style="margin-top:10px;">
+    <button onclick="appSettings.save()" style="background:#2196F3;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-right:5px;margin-bottom:5px;">💾 Speichern</button>
+    <button onclick="appSettings.testGH()" style="background:#4CAF50;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-right:5px;margin-bottom:5px;">🧪 Test GitHub</button>
+    <button onclick="appSettings.testAI()" style="background:#4CAF50;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-right:5px;margin-bottom:5px;">🧪 Test API</button>
+    <button onclick="appSettings.export()" style="background:#6c757d;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-right:5px;margin-bottom:5px;">📥 Export</button>
+    <button onclick="appSettings.import()" style="background:#6c757d;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-right:5px;margin-bottom:5px;">📤 Import</button>
+    <button onclick="appSettings.clear()" style="background:#dc3545;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-bottom:5px;">🗑️ Löschen</button>
+  </div>
 </div>
 
 <script>
-console.log("✅ Settings Script geladen");
-
-var appSettingsGlobal = {
-  appName: 'Fahrtenbuch',
-  
-  getSetting: function(key) {
-    try {
-      const data = localStorage.getItem(this.appName + "_" + key);
-      return data || "";
-    } catch (e) {
-      return "";
-    }
+var appSettings = {
+  getSetting: function(k) {
+    try { var d = localStorage.getItem('Fahrtenbuch_'+k); return d || ''; } catch(e) { return ''; }
   },
-  
-  setSetting: function(key, value) {
-    try {
-      localStorage.setItem(this.appName + "_" + key, value);
-      console.log("✅ Gespeichert:", key);
-    } catch (e) {
-      console.error("Fehler:", e);
-    }
+  setSetting: function(k, v) {
+    try { localStorage.setItem('Fahrtenbuch_'+k, v); alert('✅ Gespeichert'); } catch(e) { alert('❌ Fehler'); }
   },
-  
-  loadSettings: function() {
-    var token = document.getElementById("setting_github_token");
-    var owner = document.getElementById("setting_github_owner");
-    var repo = document.getElementById("setting_github_repo");
-    var anthro = document.getElementById("setting_anthropic_api_key");
-    
-    if (token) token.value = this.getSetting("github_token");
-    if (owner) owner.value = this.getSetting("github_owner");
-    if (repo) repo.value = this.getSetting("github_repo");
-    if (anthro) anthro.value = this.getSetting("anthropic_api_key");
+  testGH: function() {
+    var t = document.getElementById('setting_github_token').value;
+    var o = document.getElementById('setting_github_owner').value;
+    var r = document.getElementById('setting_github_repo').value;
+    if(!t || !o || !r) { alert('❌ Felder fehlen'); return; }
+    fetch('https://api.github.com/repos/'+o+'/'+r, {headers:{'Authorization':'token '+t}})
+      .then(x => x.ok ? alert('✅ OK') : alert('❌ Fehler: '+x.status))
+      .catch(e => alert('❌ '+e.message));
   },
-  
-  saveSettings: function() {
-    var token = document.getElementById("setting_github_token");
-    var owner = document.getElementById("setting_github_owner");
-    var repo = document.getElementById("setting_github_repo");
-    var anthro = document.getElementById("setting_anthropic_api_key");
-    
-    if (token) this.setSetting("github_token", token.value);
-    if (owner) this.setSetting("github_owner", owner.value);
-    if (repo) this.setSetting("github_repo", repo.value);
-    if (anthro) this.setSetting("anthropic_api_key", anthro.value);
-    
-    alert("✅ Gespeichert!");
+  testAI: function() {
+    var k = document.getElementById('setting_anthropic_api_key').value;
+    if(!k) { alert('❌ Feld leer'); return; }
+    fetch('https://api.anthropic.com/v1/models', {headers:{'x-api-key':k}})
+      .then(x => x.ok ? alert('✅ OK') : alert('❌ Fehler: '+x.status))
+      .catch(e => alert('❌ '+e.message));
   },
-  
-  testGitHub: function() {
-    var token = document.getElementById("setting_github_token").value;
-    var owner = document.getElementById("setting_github_owner").value;
-    var repo = document.getElementById("setting_github_repo").value;
-    
-    if (!token || !owner || !repo) {
-      alert("❌ Nicht alle Felder gefüllt!");
-      return;
-    }
-    
-    alert("🧪 Teste...");
-    
-    fetch("https://api.github.com/repos/" + owner + "/" + repo, {
-      headers: { "Authorization": "token " + token }
-    })
-    .then(function(r) {
-      if (r.ok) alert("✅ GitHub OK!");
-      else if (r.status === 401) alert("❌ Token ungültig!");
-      else if (r.status === 404) alert("❌ Repo nicht gefunden!");
-      else alert("❌ Fehler: " + r.status);
-    })
-    .catch(function(e) { alert("❌ " + e.message); });
-  },
-  
-  testAnthropicKey: function() {
-    var key = document.getElementById("setting_anthropic_api_key").value;
-    
-    if (!key) {
-      alert("❌ API Key fehlt!");
-      return;
-    }
-    
-    alert("🧪 Teste...");
-    
-    fetch("https://api.anthropic.com/v1/models", {
-      headers: { "x-api-key": key }
-    })
-    .then(function(r) {
-      if (r.ok) alert("✅ Anthropic OK!");
-      else if (r.status === 401) alert("❌ Key ungültig!");
-      else alert("❌ Fehler: " + r.status);
-    })
-    .catch(function(e) { alert("❌ " + e.message); });
-  },
-  
-  exportSettings: function() {
-    var data = {
-      app: this.appName,
-      exported: new Date().toISOString(),
-      settings: {
-        github_token: this.getSetting("github_token"),
-        github_owner: this.getSetting("github_owner"),
-        github_repo: this.getSetting("github_repo"),
-        anthropic_api_key: this.getSetting("anthropic_api_key")
-      }
-    };
-    
-    var json = JSON.stringify(data, null, 2);
-    var blob = new Blob([json], { type: "application/json" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = this.appName.toLowerCase() + "_settings.json";
+  export: function() {
+    var d = {'app':'Fahrtenbuch','settings':{'github_token':this.getSetting('github_token'),'github_owner':this.getSetting('github_owner'),'github_repo':this.getSetting('github_repo'),'anthropic_api_key':this.getSetting('anthropic_api_key')}};
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(d,null,2)], {type:'application/json'}));
+    a.download = 'fahrtenbuch_settings.json';
     a.click();
-    URL.revokeObjectURL(url);
-    alert("✅ Exportiert!");
   },
-  
-  importSettings: function() {
-    var json = prompt("Paste Settings JSON:");
-    if (!json) return;
-    
-    try {
-      var data = JSON.parse(json);
-      this.setSetting("github_token", data.settings.github_token);
-      this.setSetting("github_owner", data.settings.github_owner);
-      this.setSetting("github_repo", data.settings.github_repo);
-      this.setSetting("anthropic_api_key", data.settings.anthropic_api_key);
-      this.loadSettings();
-      alert("✅ Importiert!");
-    } catch (e) {
-      alert("❌ " + e.message);
-    }
+  import: function() {
+    var j = prompt('JSON einfügen:');
+    if(!j) return;
+    try { var d = JSON.parse(j); this.setSetting('github_token', d.settings.github_token); this.setSetting('github_owner', d.settings.github_owner); this.setSetting('github_repo', d.settings.github_repo); this.setSetting('anthropic_api_key', d.settings.anthropic_api_key); this.load(); alert('✅ Importiert'); } catch(e) { alert('❌ '+e.message); }
   },
-  
-  clearAll: function() {
-    if (confirm("Wirklich löschen?")) {
-      localStorage.clear();
-      this.loadSettings();
-      alert("✅ Gelöscht!");
-    }
+  clear: function() {
+    if(confirm('Löschen?')) { localStorage.clear(); this.load(); alert('✅ Gelöscht'); }
+  },
+  load: function() {
+    var t = document.getElementById('setting_github_token'); if(t) t.value = this.getSetting('github_token');
+    var o = document.getElementById('setting_github_owner'); if(o) o.value = this.getSetting('github_owner');
+    var r = document.getElementById('setting_github_repo'); if(r) r.value = this.getSetting('github_repo');
+    var a = document.getElementById('setting_anthropic_api_key'); if(a) a.value = this.getSetting('anthropic_api_key');
+  },
+  save: function() {
+    this.setSetting('github_token', document.getElementById('setting_github_token').value);
+    this.setSetting('github_owner', document.getElementById('setting_github_owner').value);
+    this.setSetting('github_repo', document.getElementById('setting_github_repo').value);
+    this.setSetting('anthropic_api_key', document.getElementById('setting_anthropic_api_key').value);
   }
 };
-
-window.addEventListener('load', function() {
-  appSettingsGlobal.loadSettings();
-  console.log("✅ Settings geladen");
-});
+window.addEventListener('load', function() { appSettings.load(); });
 </script>
-
-<style>
-.settings-simple {
-  max-width: 600px;
-  margin: 20px auto;
-  padding: 20px;
-}
-.settings-simple h3 {
-  margin-top: 0;
-  color: #333;
-}
-.settings-simple input {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-  box-sizing: border-box;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-.settings-simple button {
-  padding: 10px 15px;
-  margin-right: 5px;
-  margin-bottom: 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  color: white;
-  font-weight: bold;
-}
-.settings-btn-save { background: #2196F3; }
-.settings-btn-test { background: #4CAF50; }
-.settings-btn-export { background: #6c757d; }
-.settings-btn-import { background: #6c757d; }
-.settings-btn-delete { background: #dc3545; }
-.settings-btn-save:hover { background: #0b7dda; }
-.settings-btn-test:hover { background: #45a049; }
-</style>
 </body>
 </html>
