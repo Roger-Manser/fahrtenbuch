@@ -129,6 +129,81 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 .toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+
+<style>
+#fahrtenbuch-settings-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #2196F3;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  z-index: 999;
+}
+#fahrtenbuch-settings-btn:hover {
+  background: #0b7dda;
+}
+#fahrtenbuch-settings-panel {
+  display: none;
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 320px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 15px rgba(0,0,0,0.15);
+  padding: 15px;
+  z-index: 999;
+  max-height: 500px;
+  overflow-y: auto;
+}
+#fahrtenbuch-settings-panel h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+#fahrtenbuch-settings-panel input {
+  width: 100%;
+  padding: 8px;
+  margin: 5px 0;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+}
+#fahrtenbuch-settings-panel button {
+  width: 100%;
+  padding: 8px;
+  margin: 5px 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+}
+#fahrtenbuch-settings-status {
+  min-height: 20px;
+  margin: 8px 0;
+  padding: 5px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: center;
+}
+.fahrtenbuch-btn-save { background: #4CAF50; color: white; }
+.fahrtenbuch-btn-test { background: #FFC107; color: black; }
+.fahrtenbuch-btn-export { background: #6c757d; color: white; }
+.fahrtenbuch-btn-import { background: #6c757d; color: white; }
+.fahrtenbuch-btn-delete { background: #dc3545; color: white; }
+.fahrtenbuch-btn-save:hover { background: #45a049; }
+.fahrtenbuch-btn-test:hover { background: #ffb81c; }
+</style>
 </head>
 <body>
 
@@ -1151,75 +1226,22 @@ if('serviceWorker' in navigator){
 
 </script>
 
-<div style="max-width:600px;margin:20px auto;padding:20px;background:#f5f5f5;border-radius:8px;">
+<!-- FAHRTENBUCH SETTINGS PANEL -->
+<button id="fahrtenbuch-settings-btn" onclick="fahrtenbuchSettings.toggleSettings()">⚙️</button>
+<div id="fahrtenbuch-settings-panel">
   <h3>⚙️ Einstellungen</h3>
-  <input type="password" id="setting_github_token" placeholder="GitHub Token (ghp_...)" style="width:100%;padding:8px;margin:5px 0;box-sizing:border-box;" />
-  <input type="text" id="setting_github_owner" placeholder="GitHub Owner" style="width:100%;padding:8px;margin:5px 0;box-sizing:border-box;" />
-  <input type="text" id="setting_github_repo" placeholder="Repository" style="width:100%;padding:8px;margin:5px 0;box-sizing:border-box;" />
-  <input type="password" id="setting_anthropic_api_key" placeholder="Anthropic API Key (sk-ant-...)" style="width:100%;padding:8px;margin:5px 0;box-sizing:border-box;" />
-  <div style="margin-top:10px;">
-    <button onclick="appSettings.save()" style="background:#2196F3;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-right:5px;margin-bottom:5px;">💾 Speichern</button>
-    <button onclick="appSettings.testGH()" style="background:#4CAF50;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-right:5px;margin-bottom:5px;">🧪 Test GitHub</button>
-    <button onclick="appSettings.testAI()" style="background:#4CAF50;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-right:5px;margin-bottom:5px;">🧪 Test API</button>
-    <button onclick="appSettings.export()" style="background:#6c757d;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-right:5px;margin-bottom:5px;">📥 Export</button>
-    <button onclick="appSettings.import()" style="background:#6c757d;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-right:5px;margin-bottom:5px;">📤 Import</button>
-    <button onclick="appSettings.clear()" style="background:#dc3545;color:white;padding:10px 15px;border:none;border-radius:4px;cursor:pointer;margin-bottom:5px;">🗑️ Löschen</button>
-  </div>
+  <input type="password" id="fahrtenbuch_github_token" placeholder="GitHub Token (ghp_...)" />
+  <input type="text" id="fahrtenbuch_github_owner" placeholder="GitHub Owner" />
+  <input type="text" id="fahrtenbuch_github_repo" placeholder="Repository" />
+  <div id="fahrtenbuch-settings-status"></div>
+  <button class="fahrtenbuch-btn-save" onclick="fahrtenbuchSettings.save()">💾 Speichern</button>
+  <button class="fahrtenbuch-btn-test" onclick="fahrtenbuchSettings.testGitHub()">🧪 Test GitHub</button>
+  <button class="fahrtenbuch-btn-export" onclick="fahrtenbuchSettings.exportSettings()">📥 Export</button>
+  <button class="fahrtenbuch-btn-import" onclick="fahrtenbuchSettings.importSettings()">📤 Import</button>
+  <button class="fahrtenbuch-btn-delete" onclick="fahrtenbuchSettings.clearAll()">🗑️ Löschen</button>
 </div>
+<!-- END FAHRTENBUCH SETTINGS PANEL -->
 
-<script>
-var appSettings = {
-  getSetting: function(k) {
-    try { var d = localStorage.getItem('Fahrtenbuch_'+k); return d || ''; } catch(e) { return ''; }
-  },
-  setSetting: function(k, v) {
-    try { localStorage.setItem('Fahrtenbuch_'+k, v); alert('✅ Gespeichert'); } catch(e) { alert('❌ Fehler'); }
-  },
-  testGH: function() {
-    var t = document.getElementById('setting_github_token').value;
-    var o = document.getElementById('setting_github_owner').value;
-    var r = document.getElementById('setting_github_repo').value;
-    if(!t || !o || !r) { alert('❌ Felder fehlen'); return; }
-    fetch('https://api.github.com/repos/'+o+'/'+r, {headers:{'Authorization':'token '+t}})
-      .then(x => x.ok ? alert('✅ OK') : alert('❌ Fehler: '+x.status))
-      .catch(e => alert('❌ '+e.message));
-  },
-  testAI: function() {
-    var k = document.getElementById('setting_anthropic_api_key').value;
-    if(!k) { alert('❌ Feld leer'); return; }
-    fetch('https://api.anthropic.com/v1/models', {headers:{'x-api-key':k}})
-      .then(x => x.ok ? alert('✅ OK') : alert('❌ Fehler: '+x.status))
-      .catch(e => alert('❌ '+e.message));
-  },
-  export: function() {
-    var d = {'app':'Fahrtenbuch','settings':{'github_token':this.getSetting('github_token'),'github_owner':this.getSetting('github_owner'),'github_repo':this.getSetting('github_repo'),'anthropic_api_key':this.getSetting('anthropic_api_key')}};
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(d,null,2)], {type:'application/json'}));
-    a.download = 'fahrtenbuch_settings.json';
-    a.click();
-  },
-  import: function() {
-    var j = prompt('JSON einfügen:');
-    if(!j) return;
-    try { var d = JSON.parse(j); this.setSetting('github_token', d.settings.github_token); this.setSetting('github_owner', d.settings.github_owner); this.setSetting('github_repo', d.settings.github_repo); this.setSetting('anthropic_api_key', d.settings.anthropic_api_key); this.load(); alert('✅ Importiert'); } catch(e) { alert('❌ '+e.message); }
-  },
-  clear: function() {
-    if(confirm('Löschen?')) { localStorage.clear(); this.load(); alert('✅ Gelöscht'); }
-  },
-  load: function() {
-    var t = document.getElementById('setting_github_token'); if(t) t.value = this.getSetting('github_token');
-    var o = document.getElementById('setting_github_owner'); if(o) o.value = this.getSetting('github_owner');
-    var r = document.getElementById('setting_github_repo'); if(r) r.value = this.getSetting('github_repo');
-    var a = document.getElementById('setting_anthropic_api_key'); if(a) a.value = this.getSetting('anthropic_api_key');
-  },
-  save: function() {
-    this.setSetting('github_token', document.getElementById('setting_github_token').value);
-    this.setSetting('github_owner', document.getElementById('setting_github_owner').value);
-    this.setSetting('github_repo', document.getElementById('setting_github_repo').value);
-    this.setSetting('anthropic_api_key', document.getElementById('setting_anthropic_api_key').value);
-  }
-};
-window.addEventListener('load', function() { appSettings.load(); });
-</script>
+<script src="fahrtenbuch-settings.js"><\/script>
 </body>
 </html>
