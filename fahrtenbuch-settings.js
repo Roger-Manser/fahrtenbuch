@@ -1,27 +1,36 @@
-// Fahrtenbuch Settings v4.0 - KOMPAKT & SMART
+// Fahrtenbuch Settings v4.1 - FIXED
 var fahrtenbuchSettings = {
   isOpen: false,
   statusMsg: '',
   
   // Toggle Settings Panel
   toggleSettings: function() {
+    console.log('Toggle clicked, isOpen was:', this.isOpen);
     var panel = document.getElementById('fahrtenbuch-settings-panel');
+    if (!panel) {
+      console.error('Panel not found!');
+      return;
+    }
     this.isOpen = !this.isOpen;
     panel.style.display = this.isOpen ? 'block' : 'none';
+    console.log('Panel display now:', panel.style.display);
   },
   
   // Load settings from localStorage
   load: function() {
+    console.log('Loading settings...');
     var t = document.getElementById('fahrtenbuch_github_token');
     var o = document.getElementById('fahrtenbuch_github_owner');
     var r = document.getElementById('fahrtenbuch_github_repo');
     if(t) t.value = localStorage.getItem('Fahrtenbuch_token') || '';
     if(o) o.value = localStorage.getItem('Fahrtenbuch_owner') || 'roger-manser';
     if(r) r.value = localStorage.getItem('Fahrtenbuch_repo') || 'fahrtenbuch';
+    console.log('Settings loaded');
   },
   
   // Save settings
   save: function() {
+    console.log('Saving...');
     this.setStatus('⏳ Speichere...');
     setTimeout(() => {
       localStorage.setItem('Fahrtenbuch_token', document.getElementById('fahrtenbuch_github_token').value);
@@ -34,6 +43,7 @@ var fahrtenbuchSettings = {
   
   // Test GitHub Token
   testGitHub: function() {
+    console.log('Testing GitHub...');
     this.setStatus('🧪 Teste GitHub...');
     var t = document.getElementById('fahrtenbuch_github_token').value;
     var o = document.getElementById('fahrtenbuch_github_owner').value;
@@ -62,6 +72,7 @@ var fahrtenbuchSettings = {
   
   // Export settings
   exportSettings: function() {
+    console.log('Exporting...');
     this.setStatus('⏳ Exportiere...');
     var data = {
       app: 'Fahrtenbuch',
@@ -87,6 +98,7 @@ var fahrtenbuchSettings = {
   
   // Import settings
   importSettings: function() {
+    console.log('Importing...');
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -133,6 +145,7 @@ var fahrtenbuchSettings = {
 };
 
 // Load on page load
-window.addEventListener('load', function() {
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM ready, loading settings');
   fahrtenbuchSettings.load();
 });

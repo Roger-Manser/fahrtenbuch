@@ -132,19 +132,22 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 
 <style>
 #fahrtenbuch-settings-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
   background: #2196F3;
   color: white;
   border: none;
   cursor: pointer;
-  font-size: 24px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-  z-index: 999;
+  font-size: 16px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
 }
 #fahrtenbuch-settings-btn:hover {
   background: #0b7dda;
@@ -152,26 +155,26 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 #fahrtenbuch-settings-panel {
   display: none;
   position: fixed;
-  bottom: 80px;
-  right: 20px;
+  top: 50px;
+  right: 10px;
   width: 320px;
   background: white;
   border: 1px solid #ddd;
   border-radius: 8px;
   box-shadow: 0 2px 15px rgba(0,0,0,0.15);
   padding: 15px;
-  z-index: 999;
-  max-height: 500px;
+  z-index: 1000;
+  max-height: 400px;
   overflow-y: auto;
 }
 #fahrtenbuch-settings-panel h3 {
   margin: 0 0 10px 0;
-  font-size: 16px;
+  font-size: 14px;
 }
 #fahrtenbuch-settings-panel input {
   width: 100%;
-  padding: 8px;
-  margin: 5px 0;
+  padding: 6px;
+  margin: 4px 0;
   box-sizing: border-box;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -179,21 +182,21 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 }
 #fahrtenbuch-settings-panel button {
   width: 100%;
-  padding: 8px;
-  margin: 5px 0;
+  padding: 6px;
+  margin: 4px 0;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
 }
 #fahrtenbuch-settings-status {
-  min-height: 20px;
-  margin: 8px 0;
-  padding: 5px;
+  min-height: 18px;
+  margin: 6px 0;
+  padding: 4px;
   background: #f0f0f0;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   text-align: center;
 }
 .fahrtenbuch-btn-save { background: #4CAF50; color: white; }
@@ -1235,7 +1238,7 @@ if('serviceWorker' in navigator){
   <input type="text" id="fahrtenbuch_github_repo" placeholder="Repository" />
   <div id="fahrtenbuch-settings-status"></div>
   <button class="fahrtenbuch-btn-save" onclick="fahrtenbuchSettings.save()">💾 Speichern</button>
-  <button class="fahrtenbuch-btn-test" onclick="fahrtenbuchSettings.testGitHub()">🧪 Test GitHub</button>
+  <button class="fahrtenbuch-btn-test" onclick="fahrtenbuchSettings.testGitHub()">🧪 Test</button>
   <button class="fahrtenbuch-btn-export" onclick="fahrtenbuchSettings.exportSettings()">📥 Export</button>
   <button class="fahrtenbuch-btn-import" onclick="fahrtenbuchSettings.importSettings()">📤 Import</button>
   <button class="fahrtenbuch-btn-delete" onclick="fahrtenbuchSettings.clearAll()">🗑️ Löschen</button>
