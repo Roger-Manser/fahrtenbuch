@@ -1,22 +1,24 @@
-// Fahrtenbuch Settings v4.1 - FIXED
-var fahrtenbuchSettings = {
+// Fahrtenbuch Settings v4.2 - FIXED & INTEGRATED
+console.log('fahrtenbuch-settings.js loading...');
+
+var FahrtenbuchSettings = {
   isOpen: false,
-  statusMsg: '',
   
   // Toggle Settings Panel
-  toggleSettings: function() {
-    console.log('Toggle clicked, isOpen was:', this.isOpen);
+  toggle: function(e) {
+    console.log('FahrtenbuchSettings.toggle() called');
+    if(e) e.preventDefault();
     var panel = document.getElementById('fahrtenbuch-settings-panel');
     if (!panel) {
       console.error('Panel not found!');
-      return;
+      return false;
     }
     this.isOpen = !this.isOpen;
     panel.style.display = this.isOpen ? 'block' : 'none';
-    console.log('Panel display now:', panel.style.display);
+    console.log('Panel toggled, now:', this.isOpen ? 'OPEN' : 'CLOSED');
+    return false;
   },
   
-  // Load settings from localStorage
   load: function() {
     console.log('Loading settings...');
     var t = document.getElementById('fahrtenbuch_github_token');
@@ -28,9 +30,7 @@ var fahrtenbuchSettings = {
     console.log('Settings loaded');
   },
   
-  // Save settings
   save: function() {
-    console.log('Saving...');
     this.setStatus('⏳ Speichere...');
     setTimeout(() => {
       localStorage.setItem('Fahrtenbuch_token', document.getElementById('fahrtenbuch_github_token').value);
@@ -41,9 +41,7 @@ var fahrtenbuchSettings = {
     }, 500);
   },
   
-  // Test GitHub Token
   testGitHub: function() {
-    console.log('Testing GitHub...');
     this.setStatus('🧪 Teste GitHub...');
     var t = document.getElementById('fahrtenbuch_github_token').value;
     var o = document.getElementById('fahrtenbuch_github_owner').value;
@@ -51,6 +49,7 @@ var fahrtenbuchSettings = {
     
     if(!t || !o || !r) {
       this.setStatus('❌ Felder fehlen!');
+      setTimeout(() => this.setStatus(''), 3000);
       return;
     }
     
@@ -65,14 +64,12 @@ var fahrtenbuchSettings = {
       setTimeout(() => this.setStatus(''), 3000);
     })
     .catch(e => {
-      this.setStatus('❌ Fehler: ' + e.message);
+      this.setStatus('❌ ' + e.message);
       setTimeout(() => this.setStatus(''), 3000);
     });
   },
   
-  // Export settings
   exportSettings: function() {
-    console.log('Exporting...');
     this.setStatus('⏳ Exportiere...');
     var data = {
       app: 'Fahrtenbuch',
@@ -96,14 +93,13 @@ var fahrtenbuchSettings = {
     setTimeout(() => this.setStatus(''), 2000);
   },
   
-  // Import settings
   importSettings: function() {
-    console.log('Importing...');
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
+    var self = this;
     input.onchange = (e) => {
-      this.setStatus('⏳ Importiere...');
+      self.setStatus('⏳ Importiere...');
       var file = e.target.files[0];
       var reader = new FileReader();
       reader.onload = (event) => {
@@ -112,12 +108,12 @@ var fahrtenbuchSettings = {
           localStorage.setItem('Fahrtenbuch_token', data.settings.github_token);
           localStorage.setItem('Fahrtenbuch_owner', data.settings.github_owner);
           localStorage.setItem('Fahrtenbuch_repo', data.settings.github_repo);
-          this.load();
-          this.setStatus('✅ Importiert!');
-          setTimeout(() => this.setStatus(''), 2000);
+          self.load();
+          self.setStatus('✅ Importiert!');
+          setTimeout(() => self.setStatus(''), 2000);
         } catch(err) {
-          this.setStatus('❌ Fehler: ' + err.message);
-          setTimeout(() => this.setStatus(''), 3000);
+          self.setStatus('❌ ' + err.message);
+          setTimeout(() => self.setStatus(''), 3000);
         }
       };
       reader.readAsText(file);
@@ -125,27 +121,31 @@ var fahrtenbuchSettings = {
     input.click();
   },
   
-  // Clear all
   clearAll: function() {
     if(confirm('Wirklich alle Einstellungen löschen?')) {
       this.setStatus('⏳ Lösche...');
-      localStorage.clear();
-      this.load();
-      this.setStatus('✅ Gelöscht!');
-      setTimeout(() => this.setStatus(''), 2000);
+      setTimeout(() => {
+        localStorage.clear();
+        this.load();
+        this.setStatus('✅ Gelöscht!');
+        setTimeout(() => this.setStatus(''), 2000);
+      }, 500);
     }
   },
   
-  // Set status message
   setStatus: function(msg) {
-    this.statusMsg = msg;
     var statusEl = document.getElementById('fahrtenbuch-settings-status');
     if(statusEl) statusEl.textContent = msg;
   }
 };
 
-// Load on page load
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM ready, loading settings');
-  fahrtenbuchSettings.load();
-});
+// Initialize on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM ready, loading settings');
+    FahrtenbuchSettings.load();
+  });
+} else {
+  console.log('Page already loaded, loading settings');
+  FahrtenbuchSettings.load();
+}

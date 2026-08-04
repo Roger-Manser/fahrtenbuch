@@ -133,57 +133,68 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
 <style>
 #fahrtenbuch-settings-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
+  top: 8px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
   border-radius: 4px;
-  background: #2196F3;
+  background: rgba(255,255,255,0.15);
   color: white;
-  border: none;
+  border: 1px solid rgba(255,255,255,0.2);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
+  transition: all 0.2s;
 }
 #fahrtenbuch-settings-btn:hover {
-  background: #0b7dda;
+  background: rgba(255,255,255,0.25);
+  border-color: rgba(255,255,255,0.3);
 }
 #fahrtenbuch-settings-panel {
   display: none;
   position: fixed;
-  top: 50px;
+  top: 70px;
   right: 10px;
   width: 320px;
   background: white;
   border: 1px solid #ddd;
   border-radius: 8px;
-  box-shadow: 0 2px 15px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   padding: 15px;
   z-index: 1000;
   max-height: 400px;
   overflow-y: auto;
 }
 #fahrtenbuch-settings-panel h3 {
-  margin: 0 0 10px 0;
+  margin: 0 0 12px 0;
   font-size: 14px;
+  color: #333;
+}
+#fahrtenbuch-settings-panel label {
+  display: block;
+  font-size: 11px;
+  color: #666;
+  margin-top: 6px;
+  margin-bottom: 2px;
+  font-weight: bold;
 }
 #fahrtenbuch-settings-panel input {
   width: 100%;
   padding: 6px;
-  margin: 4px 0;
+  margin-bottom: 8px;
   box-sizing: border-box;
-  border: 1px solid #ccc;
+  border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
 }
 #fahrtenbuch-settings-panel button {
   width: 100%;
   padding: 6px;
-  margin: 4px 0;
+  margin: 3px 0;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -191,21 +202,20 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
   font-weight: bold;
 }
 #fahrtenbuch-settings-status {
-  min-height: 18px;
-  margin: 6px 0;
+  min-height: 16px;
+  margin: 8px 0 6px 0;
   padding: 4px;
-  background: #f0f0f0;
+  background: #f5f5f5;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 10px;
   text-align: center;
+  color: #333;
 }
 .fahrtenbuch-btn-save { background: #4CAF50; color: white; }
 .fahrtenbuch-btn-test { background: #FFC107; color: black; }
 .fahrtenbuch-btn-export { background: #6c757d; color: white; }
 .fahrtenbuch-btn-import { background: #6c757d; color: white; }
 .fahrtenbuch-btn-delete { background: #dc3545; color: white; }
-.fahrtenbuch-btn-save:hover { background: #45a049; }
-.fahrtenbuch-btn-test:hover { background: #ffb81c; }
 </style>
 </head>
 <body>
@@ -224,6 +234,30 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
     <div class="stat"><div class="v" id="hCons">–</div><div class="l">l / 100 km</div></div>
     <div class="stat"><div class="v" id="hPpl">–</div><div class="l">Ø CHF / l</div></div>
   </div>
+
+<!-- FAHRTENBUCH SETTINGS PANEL v4.2 -->
+<button id="fahrtenbuch-settings-btn" onclick="return FahrtenbuchSettings.toggle(event)" title="Einstellungen">⚙️</button>
+<div id="fahrtenbuch-settings-panel">
+  <h3>⚙️ Einstellungen</h3>
+  
+  <label>GitHub Token</label>
+  <input type="password" id="fahrtenbuch_github_token" placeholder="ghp_..." />
+  
+  <label>GitHub Owner</label>
+  <input type="text" id="fahrtenbuch_github_owner" placeholder="roger-manser" />
+  
+  <label>Repository</label>
+  <input type="text" id="fahrtenbuch_github_repo" placeholder="fahrtenbuch" />
+  
+  <div id="fahrtenbuch-settings-status"></div>
+  
+  <button class="fahrtenbuch-btn-save" onclick="FahrtenbuchSettings.save()">💾 Speichern</button>
+  <button class="fahrtenbuch-btn-test" onclick="FahrtenbuchSettings.testGitHub()">🧪 Test</button>
+  <button class="fahrtenbuch-btn-export" onclick="FahrtenbuchSettings.exportSettings()">📥 Export</button>
+  <button class="fahrtenbuch-btn-import" onclick="FahrtenbuchSettings.importSettings()">📤 Import</button>
+  <button class="fahrtenbuch-btn-delete" onclick="FahrtenbuchSettings.clearAll()">🗑️ Löschen</button>
+</div>
+<!-- END FAHRTENBUCH SETTINGS PANEL -->
 </header>
 
 <nav>
@@ -1228,22 +1262,6 @@ if('serviceWorker' in navigator){
 
 
 </script>
-
-<!-- FAHRTENBUCH SETTINGS PANEL -->
-<button id="fahrtenbuch-settings-btn" onclick="fahrtenbuchSettings.toggleSettings()">⚙️</button>
-<div id="fahrtenbuch-settings-panel">
-  <h3>⚙️ Einstellungen</h3>
-  <input type="password" id="fahrtenbuch_github_token" placeholder="GitHub Token (ghp_...)" />
-  <input type="text" id="fahrtenbuch_github_owner" placeholder="GitHub Owner" />
-  <input type="text" id="fahrtenbuch_github_repo" placeholder="Repository" />
-  <div id="fahrtenbuch-settings-status"></div>
-  <button class="fahrtenbuch-btn-save" onclick="fahrtenbuchSettings.save()">💾 Speichern</button>
-  <button class="fahrtenbuch-btn-test" onclick="fahrtenbuchSettings.testGitHub()">🧪 Test</button>
-  <button class="fahrtenbuch-btn-export" onclick="fahrtenbuchSettings.exportSettings()">📥 Export</button>
-  <button class="fahrtenbuch-btn-import" onclick="fahrtenbuchSettings.importSettings()">📤 Import</button>
-  <button class="fahrtenbuch-btn-delete" onclick="fahrtenbuchSettings.clearAll()">🗑️ Löschen</button>
-</div>
-<!-- END FAHRTENBUCH SETTINGS PANEL -->
 
 <script src="fahrtenbuch-settings.js"><\/script>
 </body>
