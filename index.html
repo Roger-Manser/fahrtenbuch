@@ -302,11 +302,39 @@ h3.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:upperc
   </div>
 </div>
 
+<div class="overlay" id="clOverlay" onclick="if(event.target===this)closeChangelog()">
+  <div class="sheet">
+    <h2>Versions-Historie</h2>
+    <div class="sub" id="clSub"></div>
+    <div id="clList" style="margin-top:14px"></div>
+    <button class="btn ghost" onclick="closeChangelog()">Schliessen</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 'use strict';
 const APP_VERSION = '2.6';
+const CHANGELOG = [
+  {v:'2.6', d:'2026-08-15', c:['Fehlerhaftes Zusatz-Panel (⚙️) entfernt, das die Fahrzeugdaten überdeckte','Versions-Historie hinzugefügt (klick auf Version)']},
+  {v:'2.5', d:'2026-08-03', c:['App-Icon: Motiv noch grösser, minimaler Rand']},
+  {v:'2.4', d:'2026-08-03', c:['App-Icon: schmalerer Rand, Motiv grösser']},
+  {v:'2.3', d:'2026-08-03', c:['App-Icon auf weissem Hintergrund']},
+  {v:'2.2', d:'2026-08-03', c:['Vollständiges Icon-Set: Apple-Grössen, Favicons, Windows-Kachel, maskable']},
+  {v:'2.1', d:'2026-08-03', c:['Neues App-Icon (blaues Auto) in allen Varianten']},
+  {v:'2.0', d:'2026-07-28', c:['km-Plausibilitätsprüfung mit Live-Hinweis','Responsive Diagramm-Beschriftung','GPS-Tankstellenerkennung (📍)','Autovervollständigung bei der Tankstelle']},
+  {v:'1.9', d:'2026-07-06', c:['GitHub-Sync für Handy, PC und Web','Version im Kopfbalken','Service Worker für saubere Updates']},
+  {v:'1.8', d:'2026-07-06', c:['Versionsanzeige eingeführt']},
+  {v:'1.7', d:'2026-07-01', c:['Automatischer Punkt beim Literpreis (1789 → 1.789)']},
+  {v:'1.6', d:'2026-06-20', c:['Wiederkehrende Kosten mit Intervall (monatlich/jährlich)']},
+  {v:'1.5', d:'2026-06-15', c:['Vier SVG-Diagramme in der Statistik']},
+  {v:'1.4', d:'2026-06-12', c:['Eigene, änderbare Kategorien']},
+  {v:'1.3', d:'2026-06-11', c:['Einmalkosten-Kategorien (Ankauf, Zubehör)']},
+  {v:'1.2', d:'2026-06-10', c:['Tankstellen-Auswahl und monatliche Kosten']},
+  {v:'1.1', d:'2026-06-10', c:['Komplette deutsche Oberfläche']},
+  {v:'1.0', d:'2026-06-10', c:['Erste Version: Tankstopps, Kosten, Statistik']}
+];
 /* ---------- Zustand ---------- */
 let DB = { settings:{vehicle:''}, stations:[], stationGeo:{}, categories:[], fuel:[], costs:[], recurring:[], rev:0 };
 let SY = { owner:'', repo:'', branch:'main', token:'', sha:null };
@@ -1140,7 +1168,30 @@ function fillSettings(){ document.getElementById('vehName').value = DB.settings.
 function renderAll(){ renderHeader(); renderLog(); renderRecList(); renderCatList(); if(!document.getElementById('tab-stats').hidden) renderStats(); }
 
 document.getElementById('versionInfo').textContent = 'Fahrtenbuch · Version '+APP_VERSION;
-document.getElementById('hdVer').textContent = 'v'+APP_VERSION;
+const hdVerEl = document.getElementById('hdVer');
+hdVerEl.textContent = 'v'+APP_VERSION;
+hdVerEl.style.cursor = 'pointer';
+hdVerEl.style.textDecoration = 'underline';
+hdVerEl.style.textDecorationStyle = 'dotted';
+hdVerEl.title = 'Versions-Historie anzeigen';
+hdVerEl.onclick = openChangelog;
+
+function openChangelog(){
+  document.getElementById('clSub').textContent = 'Aktuell: Version '+APP_VERSION+' · '+(CHANGELOG[0]?CHANGELOG[0].d:'');
+  document.getElementById('clList').innerHTML = CHANGELOG.map(e=>
+    '<div style="margin-bottom:14px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:4px;margin-bottom:6px">'+
+        '<b style="font-family:var(--mono);font-size:14px">v'+e.v+'</b>'+
+        '<span style="font-size:11px;color:var(--ink-soft)">'+e.d+'</span>'+
+      '</div>'+
+      '<ul style="margin:0;padding-left:18px">'+
+        e.c.map(x=>'<li style="font-size:13px;line-height:1.5;margin-bottom:2px">'+esc(x)+'</li>').join('')+
+      '</ul>'+
+    '</div>'
+  ).join('');
+  document.getElementById('clOverlay').classList.add('open');
+}
+function closeChangelog(){ document.getElementById('clOverlay').classList.remove('open'); }
 restore(); fillSettings(); loadSyncSettings(); renderAll(); refreshSyncStatus();
 if(syncConfigured()) syncPull(false);
 
