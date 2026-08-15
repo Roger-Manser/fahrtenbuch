@@ -1,6 +1,6 @@
 {
   "settings": {
-    "vehicle": "Cupra Teramar AR 37976"
+    "vehicle": "Cupra Terramar AR 37976"
   },
   "stations": [
     "HEM Tankstelle Sinnsheim",
@@ -149,5 +149,5 @@
       "interval": "m"
     }
   ],
-  "rev": 6
+  "rev": 7
 }
