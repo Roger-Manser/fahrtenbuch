@@ -129,6 +129,14 @@
       "amount": 200,
       "odo": null,
       "note": "Badge für Waschanlage geladen"
+    },
+    {
+      "id": "msyxw6f4tdk1",
+      "date": "2026-08-18",
+      "cat": "Parkieren",
+      "amount": 1.7,
+      "odo": null,
+      "note": "Areneberg"
     }
   ],
   "recurring": [
@@ -149,5 +157,5 @@
       "interval": "m"
     }
   ],
-  "rev": 7
+  "rev": 8
 }
