@@ -11,7 +11,12 @@
     "Spurt-TS Teufnerstr.",
     "Etzelpark Gossau"
   ],
-  "stationGeo": {},
+  "stationGeo": {
+    "Agrola Tankstelle": {
+      "lat": 47.3874085,
+      "lng": 9.3920953
+    }
+  },
   "categories": [],
   "fuel": [
     {
@@ -103,6 +108,16 @@
       "ppl": 1.919,
       "total": 103.84,
       "note": ""
+    },
+    {
+      "id": "muap2wcz4sqa",
+      "date": "2026-09-21",
+      "station": "Agrola Tankstelle",
+      "odo": 6357,
+      "liters": 55.27,
+      "ppl": 2.12,
+      "total": 117.17,
+      "note": ""
     }
   ],
   "costs": [
@@ -157,5 +172,5 @@
       "interval": "m"
     }
   ],
-  "rev": 8
+  "rev": 9
 }
