@@ -13,8 +13,8 @@
   ],
   "stationGeo": {
     "Agrola Tankstelle": {
-      "lat": 47.3874085,
-      "lng": 9.3920953
+      "lat": 47.4080845,
+      "lng": 9.36877
     }
   },
   "categories": [],
@@ -118,6 +118,16 @@
       "ppl": 2.12,
       "total": 117.17,
       "note": ""
+    },
+    {
+      "id": "mvs76eccpkev",
+      "date": "2026-10-28",
+      "station": "Agrola Tankstelle",
+      "odo": 7002,
+      "liters": 53.24,
+      "ppl": 2.13,
+      "total": 113.4,
+      "note": ""
     }
   ],
   "costs": [
@@ -172,5 +182,5 @@
       "interval": "m"
     }
   ],
-  "rev": 9
+  "rev": 10
 }
