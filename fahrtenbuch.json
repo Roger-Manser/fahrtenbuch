@@ -162,6 +162,14 @@
       "amount": 1.7,
       "odo": null,
       "note": "Areneberg"
+    },
+    {
+      "id": "mvw96pb1l6n7",
+      "date": "2026-10-31",
+      "cat": "Parkieren",
+      "amount": 0.7,
+      "odo": null,
+      "note": ""
     }
   ],
   "recurring": [
@@ -182,5 +190,5 @@
       "interval": "m"
     }
   ],
-  "rev": 10
+  "rev": 11
 }
